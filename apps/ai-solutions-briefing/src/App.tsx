@@ -81,7 +81,7 @@ export default function App() {
             <div className="kicker">Office of the Director · AI Solutions</div>
             <h1>Leadership briefing</h1>
             <p className="meta">
-              {briefing.periodLabel} · Prepared for {audienceMeta.label.toLowerCase()} · Not a
+              {briefing.periodLabel} · Prepared for {audienceMeta.label} · Not a
               customer-facing document
             </p>
           </div>
