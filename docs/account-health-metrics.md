@@ -16,6 +16,9 @@ Later layers (HubSpot, Salesforce, Gong, Avoma) are parked at the end. They are 
 | API surface | **Public Datagrid API only.** No richer internal API. Conversation author, daily credits, and credit categories stay unavailable. |
 | Activity timestamps (P7, P9) | **Not locked.** Inspect `created_at` vs `updated_at` on real conversations before choosing the trailing-window rule. |
 | TTV event timestamps | **`created_at` only.** A value event is when the object first existed, not when it was last touched. Do not wait on the P7 inspection to compute TTV. |
+| Value model | **User lifecycle types** (Non-User → Power / Churned / Lapsed), not the old T1–T6 event ladder. See [§8](#8-user-lifecycle). |
+| Sticky / Passive threshold | **≥5** distinct active calendar days in the trailing 30 days = Sticky or Advanced. **1–4** = Passive. Exactly 5 is Sticky/Advanced (the original “>5” / “<5” left 5 unassigned). |
+| Power User | **Overlay flag**, not a mutually exclusive rung. A user can be Passive and a builder. |
 
 ---
 
@@ -39,7 +42,7 @@ Primary grain: **account** = one Datagrid organization (large-scale customer org
 
 Default calculation window for **trailing** metrics (P7–P13, etc.): last 30 days, same as in-product Control Tower. That is a formula default, not a product-scope decision.
 
-**TTV is not a trailing-window metric.** It is elapsed time from an account start clock to a value event (see [§8](#8-time-to-value)).
+**User lifecycle** is the value model (see [§8](#8-user-lifecycle)). Time-to-value is time to first enter a lifecycle milestone, not a separate ladder of product events.
 
 A conversation counts as a **chat** when it has at least one message (`has_messages=true`). Empty sessions are tracked separately as abandoned.
 
@@ -159,11 +162,11 @@ Do not roll these into a single number until CS/PS agree on weights. Use them as
 
 | Dimension | What “better” looks like | Product metrics | Blocked by |
 | --- | --- | --- | --- |
-| Time to value | Reaches a value milestone quickly after start | T0, T1–T6, T7–T9 | Cannot prove the actor was the customer (no chat author) |
+| Lifecycle mix | Fewer Non-User / Churned / Lapsed; more Sticky / Advanced / Power | U1–U12, TTV-to-stage | Person-level types need conversation author (permanent on public API) |
 | Recency | Someone used the product recently | P9 | Confirm `updated_at` |
 | Breadth | More than one teamspace and agent in use | P10–P13, P17–P18 | P14, P19 for people-breadth |
 | Depth | Multi-turn work, not one-shot asks | P21–P24 | — |
-| Activation | A meaningful share of provisioned people actually chat | P14–P16 | Conversation author (permanent) |
+| Activation | A meaningful share of provisioned people actually chat | P14–P16, U1 vs U2+ | Conversation author (permanent) |
 | Credit posture | Using allotment without burning out | P27–P30 | History / category (P31–P32) |
 | Who is using it | Customer-domain users, not only Procore/support | P2, P20 | Author + domain rule; P19 |
 
@@ -189,7 +192,7 @@ Constraints:
 
 Join key is not Datagrid `accountId`. Practical join is **email domain** and/or **account name**, then a manual mapping table for collisions.
 
-Useful later: owner, segment, ARR, stage, renewal date, implementation kickoff, contractual start / go-live. Those become alternate **T0** clocks for TTV (see §8.5). Do not wait on CRM to lock product T0.
+Useful later: owner, segment, ARR, stage, renewal date, implementation kickoff, contractual start / go-live. Those become alternate **T0** clocks for time-to-stage (see §8.8). Do not wait on CRM to lock product T0.
 
 ### Gong and Avoma
 
@@ -199,126 +202,184 @@ Transcripts have **no account ID**. Matching from title + transcript is a separa
 
 ## 7. Open questions that still change formulas
 
-1. **Activity timestamp (P7 / P9):** `updated_at` vs `created_at` on real conversations. TTV does not depend on this.
+1. **Activity timestamp (P7 / P9):** `updated_at` vs `created_at` on real conversations. Lifecycle **active days** use conversation `created_at` (the day the thread started). Confirm whether a thread that gets new messages on later days should count those days (`updated_at` or message `created_at`).
 2. **Primary email domain (P20):** most common domain, or most common non-`procore.com` / non-`datagrid.com` domain?
 3. **Credit window:** keep P27–P30 on billing period (locked until a daily ledger exists).
-4. **TTV primary value event:** proposed as **first multi-turn chat** (T3). Confirm or pick another rung on the ladder in §8.3.
-5. **Default / seeded objects:** does a new org always get a teamspace, default agents, or sample knowledge at provision? If yes, T0 and T4/T5 need exclusion rules.
+4. **Calendar timezone** for intro day / active days: UTC, or a per-account timezone we do not yet have?
+5. **Churn grace:** as written, the calendar day after intro with no return is Churned (Friday intro → Saturday Churned). Keep that, or require 7 days after intro before Churned?
+6. **Default / seeded objects:** does a new org always get a teamspace, default agents, or sample knowledge at provision? Affects T0 and the Power flag.
+7. **Person-level identity:** the public API still has no conversation author and no `created_by` on agents/knowledge. Person-level types stay blocked unless that changes.
 
 ---
 
-## 8. Time to value
+## 8. User lifecycle
 
-TTV answers: **after this account existed in product, how long until it did something that looks like value?**
+This replaces the old T1–T6 event ladder. Value is **which type a user is right now**, plus **how long they took to reach each milestone**.
 
-It is a duration on the account, plus a portfolio distribution. It is not “chats in the last 30 days.”
+Grain: a **provisioned org user** (`GET /organization/users`). Everyone on that list gets exactly one engagement type. Power is a separate yes/no.
 
-### 8.1 Clock start (T0)
+Person-level assignment is **blocked** on the public API (no author on conversations, no `created_by` on agents or knowledge). The tree below is still the definition. [§8.6](#86-what-we-can-compute-today) is the account-as-actor fallback we can calculate with per-customer keys.
 
-The API has **no organization `created_at`** and **no user `created_at`**.
+### 8.1 Shared definitions
 
-| ID | Field | Formula | Status | Notes |
-| --- | --- | --- | --- | --- |
-| T0 | Account start | `min(teamspace.created_at)` across the org | Ready | Best product-native birth we have. Walk every teamspace. |
-
-Caveats:
-
-- If Datagrid always creates a default teamspace at org provision, T0 ≈ org birth. That is what we want.
-- If the first teamspace is created days later, T0 is late and every TTV looks shorter than reality.
-- Do not use “when we stored the API key” as T0. That is our access date, not the customer’s start.
-- Later CRM start dates (close, kickoff, go-live) are additional clocks, not replacements for T0, until we can join.
-
-If `T0` is missing (no teamspaces), the account is **not started**. TTV is undefined.
-
-### 8.2 Value events (T1…T6)
-
-Each Ti is a timestamp. `TTV_i = Ti − T0` in days (fractional is fine; report in days).
-
-Use **`created_at`** of the qualifying object. If `Ti < T0` (clock skew or a chat in a teamspace we failed to list), clamp is wrong — drop that event and flag a data error.
-
-| ID | Value event | Ti formula | Status | What it means | Failure mode |
-| --- | --- | --- | --- | --- | --- |
-| T1 | First chat | `min(conversation.created_at)` where `has_messages=true` | Ready | First use. Time-to-first-use, not really “value.” | PS / Procore often fires this during setup. We cannot exclude them (no author). |
-| T2 | First answered chat | `min(conversation.created_at)` that has ≥1 `role=user` and ≥1 `role=agent` message | Ready | First completed Q&A. Costs a message page per conversation until the first hit (scan oldest first). | Same setup-chat problem as T1. |
-| T3 | First multi-turn chat | `min(conversation.created_at)` with ≥2 `role=user` messages | Ready | **Proposed primary TTV.** Someone came back in-thread. Stronger than a single ask. | A determined setup test can still be multi-turn. Rarely TTV = 0 unless they grind a thread at provision. |
-| T4 | First user-created agent | `min(agent.created_at)` where `managed_by_app` is null | Ready | They built (or saved) an agent. Core product value for this platform. | Seeded / copied agents with null `managed_by_app` look like customer work. Inspect a few orgs. |
-| T5 | First knowledge created | `min(knowledge.created_at)` where `row_counts.completed > 0` **or** `status` in `ready`, `partial` | Ready | They put their data in. Strong “this can answer from our world” signal. | `created_at` is upload time, not first-ready time. Failed-only knowledge does not count. |
-| T6 | First connection | `min(connection.created_at)` | Ready | First integration (Drive, HubSpot, Procore, …). Setup value, not usage value. | A dead/invalid connection still has `created_at`. Prefer `valid=true` if that field is populated. |
-
-Do not use credits for TTV. We only have current-period totals, not “first credit consumed at.”
-
-Do not use `conversation.updated_at` as Ti. Reopening an old thread would move “first value.”
-
-### 8.3 Primary definition (proposed)
-
-**Time to value (product, v0) = T3 − T0**  
-(days from first teamspace to first multi-turn chat).
-
-Report T1, T4, and T5 beside it. Accounts stall at different rungs; a single number hides that.
-
-| Account pattern | How to read it |
+| Term | Definition |
 | --- | --- |
-| T1 missing | Never used. TTV undefined. Age = now − T0. |
-| T1 fast, T3 missing | One-shot asks only. Used, not valued. |
-| T4 or T5 fast, T3 slow | Configured, not adopted. PS setup without usage. |
-| T3 fast, T4 and T5 missing | Chatting with empty/default agents. Shallow value. |
-| All of T3, T4, T5 present | Configured and used. Best product-native “got value.” |
+| Completed conversation | A conversation with ≥1 `role=user` message **and** ≥1 `role=agent` message. Matches “question and answer.” Abandoned threads do not count. |
+| Active day | A calendar date with ≥1 completed conversation. |
+| Intro date | Calendar date of the user’s first completed conversation. |
+| Returned | Has a completed conversation on any calendar date **≠** intro date. |
+| Trailing 30 | The 30 calendar dates ending on the computation date (intro date’s timezone — see open question). |
+| Active days (30) | Count of distinct active days in the trailing 30. |
+| Agents (30) | Distinct `participated_agent_ids` (or message `agent_id`) on completed conversations in the trailing 30. |
+| Builder | Has created an agent with `managed_by_app` null, **or** knowledge with `row_counts.completed > 0` (or `status` in `ready` / `partial`), **or** a connection (prefer `valid=true`). |
 
-**Proposed “fully valued” flag (T7):** T3 and (T4 or T5) have occurred. Optional. Do not use this as the only TTV.
+“Came back to the product” is operationalized as a completed conversation on a later **calendar day**, not a second message in the same intro-day thread.
 
-### 8.4 Censoring and portfolio rollup
+### 8.2 Why the original list was not exhaustive
 
-Never drop accounts that have not reached the value event. Mean TTV among converters only is a lie.
+As a single ladder it mixed **lifetime milestones** with **current 30-day behavior**, and it overlapped.
 
-| ID | Metric | Grain | Formula | Status |
-| --- | --- | --- | --- | --- |
-| T8 | Valued? | Account | `T3` is not null (or T7, if we lock “fully valued”) | Ready |
-| T9 | Days since start without value | Account | `now − T0` when T8 is false; else null | Ready |
-| T10 | TTV days | Account | `T3 − T0` when T8 is true; else null | Ready |
-| T11 | % valued by day 7 / 14 / 30 / 60 | Portfolio | Among accounts with `T0 ≤ now − N days`, share with `T3 − T0 ≤ N` | Ready |
-| T12 | Median TTV | Portfolio | Median of T10 among accounts with T8 true, optionally restricted to a start cohort (e.g. T0 in a quarter) | Ready |
+| Gap | What was missing |
+| --- | --- |
+| **Basic vs Passive / Sticky / Advanced** | Anyone who is Passive, Sticky, or Advanced has already “come back on a later calendar day.” Basic is a milestone, not a current bucket. |
+| **Exactly 5 active days** | “<5” and “>5” left 5 undefined. Locked to **≥5** = Sticky/Advanced, **1–4** = Passive. |
+| **Lapsed** | Introduced, **did** return at least once, then **0** active days in the trailing 30. Not Churned (they came back after intro). Not Passive (Passive still runs conversations, just infrequently). |
+| **Churned vs still-intro** | “Does not come back after introduction” only applies **after** intro date is in the past. If intro date is **today**, they have not had a later calendar day yet → Intro, not Churned. |
+| **Power vs frequency** | Building agents/knowledge can happen at any frequency, including never chatting. If Power is an exclusive rung, a builder who chats 2 days/month disappears from Passive. Power is a **flag**. |
+| **Abandoned intro** | Started a thread, never got Q&A. Stays **Non-User**. Optional QA slice: Non-Users with vs without abandoned conversations. |
+| **Builder who never chats** | Non-User + Power flag. Do not call them Intro. |
 
-Rules:
+### 8.3 Engagement type (mutually exclusive, collectively exhaustive)
 
-- **Median, not mean.** A few 200-day accounts wreck the mean.
-- **Cohort T11 by T0**, not by “accounts we happen to have keys for this week,” once the directory is stable.
-- An account with T0 yesterday and no T3 is not a failure. It is too young for T11’s 30-day bucket.
-- Aged-not-valued (T9 ≥ 30 and T8 false) is the CS/PS action list.
+Evaluate **in order**. First match wins. Every provisioned user matches exactly one row.
 
-### 8.5 Later clocks (do not implement now)
+| ID | Type | When | Your intent |
+| --- | --- | --- | --- |
+| U1 | **Non-User** | Never completed a conversation | Never ran an agent conversation |
+| U2 | **Intro User** | Has completed ≥1 conversation, and intro date is **today** | First completed Q&A; too early to judge return or churn |
+| U3 | **Churned User** | Intro date is before today, and they have **never** returned | Did not come back after introduction |
+| U4 | **Lapsed User** | Has returned, and active days (30) = **0** | Came back after intro, then went quiet. **Added so the set is closed.** |
+| U5 | **Passive User** | Has returned, and active days (30) is **1–4** | Comes back, but under 5 days / 30 |
+| U6 | **Sticky User** | Has returned, active days (30) **≥ 5**, and agents (30) **= 1** | ≥5 days / 30, one agent |
+| U7 | **Advanced User** | Has returned, active days (30) **≥ 5**, and agents (30) **≥ 2** | ≥5 days / 30, various agents |
 
-When HubSpot / Salesforce join exists, compute the same Ti against:
+**Basic User** is not a current type. It is the lifetime milestone `returned = true` (first completed conversation on a date ≠ intro date). U4–U7 all have it. Time-to-Basic is still a TTV metric ([§8.7](#87-time-to-stage)).
 
-- Close date
-- PS kickoff
-- Contractual go-live
+Proof the seven types partition provisioned users:
 
-Product T0 stays. Contractual TTV and product TTV will disagree; that disagreement is useful (sold vs provisioned vs used).
+1. Never completed → U1.
+2. Completed, intro is today → U2 (a later calendar day cannot exist yet).
+3. Completed, intro in the past, never a later-day conversation → U3.
+4. Returned, then split only on trailing-30 activity: 0 → U4; 1–4 → U5; ≥5 and one agent → U6; ≥5 and ≥2 agents → U7.
 
-### 8.6 What we cannot claim
+No other cases. No overlaps.
 
-Because there is no conversation author:
+### 8.4 Power flag (not a eighth exclusive type)
 
-- We cannot say “customer time to value” vs “Procore-led time to value.”
-- T1 especially will look instant on accounts PS implements.
-- T3 / T4 / T5 are the workaround, not a fix.
+| ID | Flag | When |
+| --- | --- | --- |
+| U8 | **Power** | Builder = true |
 
-If first chat `created_at` is within a few minutes of T0, treat T1 as **provision-adjacent** in QA, not as a health win.
+Display as `Advanced · Power`, `Passive · Power`, `Non-User · Power`, etc.
 
-### 8.7 How to compute with per-customer keys
+If a single label is required for a chart, use this override **after** U1–U7 (not recommended as the only view):
+
+- Power and engagement in {U5, U6, U7} → label **Power User**
+- Power and U1 → still **Non-User · Power** (configured, never ran a conversation)
+- Do not relabel U2/U3/U4 as Power; intro/churn/lapse would disappear
+
+### 8.5 State picture
+
+```
+                  never completed Q&A ────────── U1 Non-User
+                         │                         (+ U8 if they only build)
+                         │ first completed Q&A
+                         ▼
+              U2 Intro (intro date = today)
+                         │ next calendar day, no return
+                         ▼
+                      U3 Churned
+                         │
+        first completed Q&A on a later calendar day
+                         ▼
+                    (Basic milestone)
+                         │
+          ┌──────────────┼──────────────────┐
+          ▼              ▼                  ▼
+   U4 Lapsed      U5 Passive         ≥5 days / 30
+   (0 days/30)    (1–4 days/30)           │
+                                    ┌─────┴─────┐
+                                    ▼           ▼
+                                 U6 Sticky   U7 Advanced
+                                 (1 agent)   (≥2 agents)
+
+U8 Power can sit on any node.
+```
+
+Churned is only the **never-returned** path. Lapsed is the **returned, then stopped** path. Those are different CS motions.
+
+### 8.6 What we can compute today
+
+| Assignment | Status | Why |
+| --- | --- | --- |
+| Person → U1–U7 | **Blocked** | Conversation and message have no `user_id`. |
+| Person → U8 | **Blocked** | Agent, knowledge, and connection have no `created_by`. |
+| **Account as one actor** → U1–U7 | Ready | Use the org’s completed conversations as if the account were a single user. |
+| **Account → U8** | Ready | Org has any user-created agent, learned knowledge, or connection. |
+| Counts of provisioned users | Ready | P1. Cannot split them into U1–U7. |
+
+Account-as-actor (computable v0):
+
+| Account type | Formula |
+| --- | --- |
+| Non-User | No completed conversation in the org |
+| Intro | First completed conversation’s date is today |
+| Churned | First completed date is before today, and no completed conversation on any later date |
+| Lapsed | At least one later-date conversation exists, and 0 active days in trailing 30 |
+| Passive | Returned, 1–4 active days in trailing 30 |
+| Sticky | Returned, ≥5 active days, exactly one agent used in trailing 30 |
+| Advanced | Returned, ≥5 active days, ≥2 agents used in trailing 30 |
+| Power (flag) | ≥1 agent with `managed_by_app` null, or qualifying knowledge, or connection |
+
+This answers “is the account in use / sticky / building?” It does **not** answer “how many people are sticky?” Until an author field exists, do not report person-level mix.
+
+### 8.7 Time to stage
+
+Clock start **T0** is unchanged: `min(teamspace.created_at)` on the account. No org or user `created_at` exists.
+
+Each milestone time is `first_entered_at − T0` in days. Use `created_at` of the qualifying conversation or object. Median, not mean. Keep accounts that have not entered the stage (censor; report % reached by day 7/14/30/60 among accounts old enough).
+
+| ID | Milestone | First entered when | Account-as-actor status |
+| --- | --- | --- | --- |
+| T0 | Account start | Earliest teamspace `created_at` | Ready |
+| T-Intro | Intro | First completed conversation | Ready |
+| T-Basic | Basic | First completed conversation on a calendar date ≠ intro date | Ready |
+| T-Sticky | Sticky | First computation date (or first historical day) at which some trailing-30 window had ≥5 active days | Ready, heavier (need a daily activity series from conversation `created_at`) |
+| T-Advanced | Advanced | First time a trailing-30 window had ≥5 active days **and** ≥2 agents | Ready, same series |
+| T-Power | Power | `min` of first user-created agent, first qualifying knowledge, first connection | Ready |
+| T-Churn | — | Not a goal. U3 is a current state, not a success time. | — |
+
+Person-level time-to-Intro is **blocked** twice: no conversation author, and no user `created_at` to start their personal clock.
+
+Do not use credits for these clocks. Do not use conversation `updated_at` as the milestone timestamp (reopening an old thread would move intro/basic).
+
+### 8.8 Later clocks
+
+When HubSpot / Salesforce join exists, recompute the same stages against close date, PS kickoff, and go-live. Product T0 stays.
+
+### 8.9 How to compute account-as-actor with per-customer keys
 
 For each directory row:
 
 1. Auth with that key. List teamspaces → T0.
-2. Per teamspace, list conversations (`has_messages=true`, sort `created_at` asc) → candidate T1.
-3. From oldest chat, list messages until T2 and T3 are found; then stop paging messages.
-4. List agents → T4 (`managed_by_app` null).
-5. List knowledge → T5.
-6. List connections → T6.
-7. Persist `{org_id, T0, T1…T6, T8, T9, T10, computed_at}`.
+2. Per teamspace, list conversations (`has_messages=true`). For each, list messages until Q&A is confirmed or ruled out.
+3. Build a set of completed conversations with `created_at` and participating agent IDs.
+4. Intro date = min completed `created_at` (calendar date). Apply the U1–U7 tree to that set.
+5. List agents / knowledge / connections → U8.
+6. Persist `{org_id, engagement_type, power, T0, t_intro, t_basic, t_sticky, t_advanced, t_power, computed_at}`.
 
-Rate limits are per teamspace. Many teamspaces × message paging is the expensive path; short-circuit after T3 is found.
+Rate limits are per teamspace. Message paging is the expensive path.
 
 ---
 
-Dashboard layout, score thresholds, and CS vs PS views stay out of scope until T3-as-primary is accepted or replaced.
+Dashboard layout, score thresholds, and CS vs PS views stay out of scope until the lifecycle tree is accepted.
