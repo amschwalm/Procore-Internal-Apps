@@ -64,6 +64,27 @@ export type ClassifiedUser = {
   agentIds30: string[];
 };
 
+export type SyncStepLevel = "info" | "error";
+
+export type SyncStep = {
+  at: string;
+  level: SyncStepLevel;
+  step: string;
+  message: string;
+};
+
+export type SyncJobStatus = "idle" | "running" | "success" | "error";
+
+export type SyncJob = {
+  status: SyncJobStatus;
+  mode: "sample" | "datagrid" | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  steps: SyncStep[];
+  error: string | null;
+  failedStep: string | null;
+};
+
 export type MetricsSnapshot = {
   source: "sample" | "datagrid" | "none";
   computedAt: string | null;

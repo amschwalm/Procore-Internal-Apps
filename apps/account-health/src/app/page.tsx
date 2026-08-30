@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { OverviewActions } from "@/components/OverviewActions";
 import { UserLadder } from "@/components/UserLadder";
-import { readState } from "@/lib/store";
+import { emptyJob, readState } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export default async function OverviewPage() {
 
   return (
     <AppShell current="overview">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-8 space-y-4">
         <div>
           <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">Overview</p>
           <h1 className="mt-1 text-2xl font-medium tracking-tight text-zinc-50">
@@ -30,7 +30,10 @@ export default async function OverviewPage() {
               : " · connect a source to compute"}
           </p>
         </div>
-        <OverviewActions hasDatagrid={Boolean(state.connections.datagrid?.apiKey)} />
+        <OverviewActions
+          hasDatagrid={Boolean(state.connections.datagrid?.apiKey)}
+          initialJob={state.job ?? emptyJob()}
+        />
       </div>
 
       <div className="space-y-6">

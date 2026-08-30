@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { emptyCounts } from "./lifecycle";
-import type { Connections, MetricsSnapshot } from "./types";
+import type { Connections, MetricsSnapshot, SyncJob } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const STATE_PATH = path.join(DATA_DIR, "state.json");
@@ -9,7 +9,20 @@ const STATE_PATH = path.join(DATA_DIR, "state.json");
 export type AppState = {
   connections: Connections;
   snapshot: MetricsSnapshot;
+  job: SyncJob;
 };
+
+export function emptyJob(): SyncJob {
+  return {
+    status: "idle",
+    mode: null,
+    startedAt: null,
+    finishedAt: null,
+    steps: [],
+    error: null,
+    failedStep: null,
+  };
+}
 
 export function emptySnapshot(): MetricsSnapshot {
   return {
@@ -33,9 +46,10 @@ export async function readState(): Promise<AppState> {
     return {
       connections: parsed.connections ?? {},
       snapshot: parsed.snapshot ?? emptySnapshot(),
+      job: parsed.job ?? emptyJob(),
     };
   } catch {
-    return { connections: {}, snapshot: emptySnapshot() };
+    return { connections: {}, snapshot: emptySnapshot(), job: emptyJob() };
   }
 }
 
