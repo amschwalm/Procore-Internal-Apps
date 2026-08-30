@@ -49,6 +49,7 @@ export type Classification = {
   agents30: number;
   agentIds30: string[];
   chats30: number;
+  chats90: number;
 };
 
 export const ENGAGEMENT_TONES: Record<EngagementType, string> = {
@@ -104,6 +105,7 @@ export function emptyClassification(): Classification {
     agents30: 0,
     agentIds30: [],
     chats30: 0,
+    chats90: 0,
   };
 }
 
@@ -117,11 +119,11 @@ export function addUtcDays(date: Date, days: number): Date {
   return next;
 }
 
-export function trailingWindowStart(now: Date): Date {
+export function trailingWindowStart(now: Date, days = 30): Date {
   const start = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
-  start.setUTCDate(start.getUTCDate() - 29);
+  start.setUTCDate(start.getUTCDate() - (days - 1));
   return start;
 }
 
@@ -151,6 +153,11 @@ export function classifyEngagement(
   const agents30 = agentIds30.length;
   const chats30 = recent.length;
 
+  const windowStart90 = trailingWindowStart(now, 90);
+  const chats90 = sorted.filter(
+    (c) => c.createdAt >= windowStart90 && c.createdAt <= now,
+  ).length;
+
   let type: EngagementType;
   if (introDate === today) {
     type = "intro";
@@ -178,6 +185,7 @@ export function classifyEngagement(
     agents30,
     agentIds30,
     chats30,
+    chats90,
   };
 }
 

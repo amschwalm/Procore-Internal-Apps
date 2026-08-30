@@ -9,7 +9,7 @@ export type UserSortKey =
   | "lastActive"
   | "days"
   | "chats"
-  | "agents";
+  | "chats90";
 
 export type UserSortDirection = "asc" | "desc";
 
@@ -85,11 +85,8 @@ export function sortUsers(users: ClassifiedUser[], sort: UserSort | null): Class
       case "chats":
         delta = compareNullableNumber(a.chats30, b.chats30);
         break;
-      case "agents":
-        delta = a.agents30 - b.agents30;
-        if (delta === 0) {
-          delta = (a.agentIds30 ?? []).join(",").localeCompare((b.agentIds30 ?? []).join(","));
-        }
+      case "chats90":
+        delta = compareNullableNumber(a.chats90, b.chats90);
         break;
       default:
         delta = 0;
@@ -102,5 +99,8 @@ export function sortUsers(users: ClassifiedUser[], sort: UserSort | null): Class
 }
 
 export function snapshotMissingChatCounts(users: ClassifiedUser[]): boolean {
-  return users.length > 0 && users.every((user) => user.chats30 == null);
+  return (
+    users.length > 0 &&
+    users.every((user) => user.chats30 == null || user.chats90 == null)
+  );
 }

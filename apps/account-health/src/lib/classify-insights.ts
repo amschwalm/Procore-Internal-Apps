@@ -45,6 +45,7 @@ export function snapshotFromInsights(
         agents30: result.agents30,
         agentIds30: result.agentIds30,
         chats30: result.chats30,
+        chats90: result.chats90,
       };
     });
 

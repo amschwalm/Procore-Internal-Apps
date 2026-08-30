@@ -61,6 +61,7 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
         agents30: 0,
         agentIds30: [],
         chats30: 0,
+        chats90: 0,
       })),
     };
   }
@@ -91,6 +92,7 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
       agents30: result.agents30,
       agentIds30: result.agentIds30,
       chats30: result.chats30,
+      chats90: result.chats90,
     };
   });
 
