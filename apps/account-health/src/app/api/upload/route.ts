@@ -55,8 +55,9 @@ export async function POST(request: Request) {
       directory: current.directory,
       orgPower: current.snapshot.orgPower,
     });
-    current.snapshot = snapshot;
-    await writeState(current);
+    const next = await readState();
+    next.snapshot = snapshot;
+    await writeState(next);
     await addStep(
       "classify",
       `Finished. ${snapshot.provisionedUsers} users classified from the export.`,
