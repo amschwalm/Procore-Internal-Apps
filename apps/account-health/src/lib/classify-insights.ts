@@ -1,5 +1,6 @@
 import { eventsByEmail, type InsightsParseResult } from "./insights-import";
 import { classifyEngagement, tally } from "./lifecycle";
+import { summarizeToolRelevance } from "./procore-tools";
 import type { ClassifiedUser, DirectoryUser, MetricsSnapshot } from "./types";
 
 function nameFromEmail(email: string): string {
@@ -52,6 +53,7 @@ export function snapshotFromInsights(
     });
 
   const { counts, powerCount } = tally(users);
+  const toolRelevance = summarizeToolRelevance(parsed.events);
   const peopleInFile = byEmail.size;
   const joined = directory.length > 0;
   const fileLabel = options.fileName ? `“${options.fileName}”` : "the uploaded export";
@@ -73,5 +75,6 @@ export function snapshotFromInsights(
     orgPower: options.orgPower ?? false,
     discoveredAuthorFields: [parsed.columns.email],
     users,
+    toolRelevance,
   };
 }

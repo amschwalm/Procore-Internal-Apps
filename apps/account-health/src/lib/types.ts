@@ -1,4 +1,5 @@
 import type { EngagementType } from "./lifecycle";
+import type { ToolRelevanceSummary } from "./procore-tools";
 
 export type SourceId =
   | "datagrid"
@@ -106,6 +107,7 @@ export type MetricsSnapshot = {
   orgPower: boolean;
   discoveredAuthorFields: string[];
   users: ClassifiedUser[];
+  toolRelevance?: ToolRelevanceSummary;
 };
 
 export type AccountRecord = {

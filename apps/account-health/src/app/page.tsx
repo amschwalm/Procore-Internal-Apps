@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { OverviewActions } from "@/components/OverviewActions";
+import { ToolRelevance } from "@/components/ToolRelevance";
 import { UserLadder } from "@/components/UserLadder";
 import { emptyJob, publicAccounts, readState, readWorkspace } from "@/lib/store";
 
@@ -56,6 +57,7 @@ export default async function OverviewPage() {
 
       <div className="space-y-6">
         <UserLadder key={state.accountId ?? "none"} snapshot={snapshot} />
+        <ToolRelevance key={state.accountId ?? "none"} summary={snapshot.toolRelevance} />
       </div>
     </AppShell>
   );
