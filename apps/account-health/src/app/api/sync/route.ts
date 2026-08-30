@@ -65,6 +65,11 @@ async function runDatagridSync(apiKey: string): Promise<void> {
     await addStep("classify", "Classifying users from completed conversations…");
     const snapshot = snapshotFromOrg(org);
     const state = await readState();
+    state.directory = org.users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      name: [user.first_name, user.last_name].filter(Boolean).join(" ").trim() || user.email || user.id,
+    }));
     state.snapshot = snapshot;
     if (state.connections.datagrid) {
       state.connections.datagrid.lastError = undefined;

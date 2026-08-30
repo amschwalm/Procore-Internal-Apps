@@ -49,6 +49,12 @@ export type Connections = {
   salesforce?: SalesforceConnection;
 };
 
+export type DirectoryUser = {
+  id: string;
+  email?: string;
+  name?: string;
+};
+
 export type ClassifiedUser = {
   id: string;
   email?: string;
@@ -77,7 +83,7 @@ export type SyncJobStatus = "idle" | "running" | "success" | "error";
 
 export type SyncJob = {
   status: SyncJobStatus;
-  mode: "sample" | "datagrid" | null;
+  mode: "sample" | "datagrid" | "upload" | null;
   startedAt: string | null;
   finishedAt: string | null;
   steps: SyncStep[];
@@ -86,7 +92,7 @@ export type SyncJob = {
 };
 
 export type MetricsSnapshot = {
-  source: "sample" | "datagrid" | "none";
+  source: "sample" | "datagrid" | "upload" | "none";
   computedAt: string | null;
   attribution: "user" | "unavailable" | "sample";
   attributionNote: string | null;

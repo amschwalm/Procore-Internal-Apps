@@ -13,7 +13,9 @@ export default async function OverviewPage() {
       ? "Sample"
       : snapshot.source === "datagrid"
         ? "Datagrid"
-        : "No data";
+        : snapshot.source === "upload"
+          ? "Insights export"
+          : "No data";
 
   return (
     <AppShell current="overview">

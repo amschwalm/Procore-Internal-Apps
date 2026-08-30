@@ -13,9 +13,10 @@ export function SourcesBoard({ initial }: { initial: PublicSourceState[] }) {
       <div>
         <h1 className="text-2xl font-medium tracking-tight text-zinc-50">Sources</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">
-          Paste credentials here. They stay on this server and are never written into
-          Mixpanel or the repo. Only Datagrid is read for widgets today. The other
-          systems are saved so the input path is already defined.
+          Paste credentials here. They stay on this server. Datagrid is the seat
+          list. Person-level stages come from an insights CSV or Excel uploaded on
+          Overview — not from a Mixpanel API. The other systems are saved so the
+          input path is already defined.
         </p>
       </div>
 

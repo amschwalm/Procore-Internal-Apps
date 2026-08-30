@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { ExportUpload } from "@/components/ExportUpload";
 import { elapsedLabel } from "@/lib/sync-format";
 import type { SyncJob } from "@/lib/types";
 
@@ -85,13 +86,21 @@ export function OverviewActions({
           {running && job.mode === "datagrid" ? `Syncing · ${elapsed}` : "Sync Datagrid"}
         </button>
         {!hasDatagrid ? (
-          <span className="text-xs text-zinc-600">Add a Datagrid key on Sources to sync live.</span>
+          <span className="text-xs text-zinc-600">Add a Datagrid key on Sources to sync the seat list.</span>
         ) : (
           <span className="text-xs text-zinc-600">
-            Org-scoped keys sync the home teamspace only. Account-scoped keys walk every teamspace and stay under Datagrid’s 200 requests/minute limit.
+            Datagrid supplies the seat list. Upload an insights export to assign stages.
           </span>
         )}
       </div>
+      <ExportUpload
+        disabled={running}
+        onUploaded={(nextJob) => {
+          setJob(nextJob);
+          setError(nextJob.error);
+          if (nextJob.status === "success") router.refresh();
+        }}
+      />
 
       {job.steps.length > 0 ? <SyncLog job={job} elapsed={elapsed} /> : null}
       {error && job.status !== "error" ? (

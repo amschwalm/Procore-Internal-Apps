@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { emptyCounts } from "./lifecycle";
-import type { Connections, MetricsSnapshot, SyncJob } from "./types";
+import type { Connections, DirectoryUser, MetricsSnapshot, SyncJob } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const STATE_PATH = path.join(DATA_DIR, "state.json");
@@ -10,6 +10,7 @@ export type AppState = {
   connections: Connections;
   snapshot: MetricsSnapshot;
   job: SyncJob;
+  directory: DirectoryUser[];
 };
 
 export function emptyJob(): SyncJob {
@@ -43,13 +44,24 @@ export async function readState(): Promise<AppState> {
   try {
     const raw = await readFile(STATE_PATH, "utf8");
     const parsed = JSON.parse(raw) as AppState;
+    const snapshot = parsed.snapshot ?? emptySnapshot();
+    const directory =
+      parsed.directory ??
+      (snapshot.source === "datagrid"
+        ? snapshot.users.map((user) => ({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          }))
+        : []);
     return {
       connections: parsed.connections ?? {},
-      snapshot: parsed.snapshot ?? emptySnapshot(),
+      snapshot,
       job: parsed.job ?? emptyJob(),
+      directory,
     };
   } catch {
-    return { connections: {}, snapshot: emptySnapshot(), job: emptyJob() };
+    return { connections: {}, snapshot: emptySnapshot(), job: emptyJob(), directory: [] };
   }
 }
 

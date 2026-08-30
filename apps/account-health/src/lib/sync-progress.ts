@@ -1,7 +1,7 @@
 import { emptyJob, readState, writeState } from "./store";
 import type { SyncJob, SyncStepLevel } from "./types";
 
-export async function startJob(mode: "sample" | "datagrid"): Promise<SyncJob> {
+export async function startJob(mode: "sample" | "datagrid" | "upload"): Promise<SyncJob> {
   const state = await readState();
   state.job = {
     status: "running",
