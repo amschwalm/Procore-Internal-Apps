@@ -88,7 +88,7 @@ export function OverviewActions({
           <span className="text-xs text-zinc-600">Add a Datagrid key on Sources to sync live.</span>
         ) : (
           <span className="text-xs text-zinc-600">
-            Small orgs: under a minute. Large orgs: several minutes — we read every conversation.
+            Org-scoped keys sync the home teamspace only. Account-scoped keys walk every teamspace and stay under Datagrid’s 200 requests/minute limit.
           </span>
         )}
       </div>

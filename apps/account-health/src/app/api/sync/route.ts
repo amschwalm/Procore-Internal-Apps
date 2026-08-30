@@ -60,7 +60,7 @@ async function runDatagridSync(apiKey: string): Promise<void> {
         : "Key accepted.",
     );
 
-    const org = await syncOrg(apiKey, addStep);
+    const org = await syncOrg(apiKey, addStep, { identity });
 
     await addStep("classify", "Classifying users from completed conversations…");
     const snapshot = snapshotFromOrg(org);
