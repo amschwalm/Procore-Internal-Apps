@@ -16,6 +16,7 @@ import type { ClassifiedUser, MetricsSnapshot } from "@/lib/types";
 import {
   filterUsers,
   nextUserSort,
+  snapshotMissingChatCounts,
   sortUsers,
   type UserSort,
   type UserSortKey,
@@ -46,6 +47,7 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
   const active = selected ?? hovered;
   const total = snapshot.provisionedUsers;
   const converted = convertedCount(snapshot.counts);
+  const chatsMissing = snapshotMissingChatCounts(snapshot.users);
 
   const visibleUsers = useMemo(() => {
     const filtered = filterUsers(snapshot.users, { query, stage: selected });
@@ -140,6 +142,13 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
         }}
       />
 
+      {chatsMissing ? (
+        <p className="border-t border-white/10 px-6 py-3 text-xs leading-relaxed text-pc-orange">
+          Chats in last 30 is empty because this snapshot was saved before chat
+          counts were stored. Upload the same insights Excel or CSV again — each
+          completed Q&A row in the trailing 30 days becomes that person’s count.
+        </p>
+      ) : null}
       {snapshot.attributionNote ? (
         <p className="border-t border-white/10 px-6 py-3 text-xs leading-relaxed text-white/45">
           {snapshot.attributionNote}

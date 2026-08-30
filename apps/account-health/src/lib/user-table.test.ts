@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ClassifiedUser } from "./types";
-import { filterUsers, nextUserSort, sortUsers } from "./user-table";
+import { filterUsers, nextUserSort, snapshotMissingChatCounts, sortUsers } from "./user-table";
 
 function user(overrides: Partial<ClassifiedUser> & Pick<ClassifiedUser, "id" | "type">): ClassifiedUser {
   return {
@@ -93,5 +93,14 @@ describe("nextUserSort", () => {
     expect(first).toEqual({ key: "user", direction: "asc" });
     expect(nextUserSort(first, "user")).toEqual({ key: "user", direction: "desc" });
     expect(nextUserSort(first, "days")).toEqual({ key: "days", direction: "asc" });
+  });
+});
+
+describe("snapshotMissingChatCounts", () => {
+  it("is true only when every saved user is missing chats30", () => {
+    expect(snapshotMissingChatCounts(rows)).toBe(false);
+    expect(
+      snapshotMissingChatCounts(rows.map(({ chats30: _chats, ...user }) => user)),
+    ).toBe(true);
   });
 });

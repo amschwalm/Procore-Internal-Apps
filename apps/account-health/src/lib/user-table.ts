@@ -100,3 +100,7 @@ export function sortUsers(users: ClassifiedUser[], sort: UserSort | null): Class
     return a.id.localeCompare(b.id);
   });
 }
+
+export function snapshotMissingChatCounts(users: ClassifiedUser[]): boolean {
+  return users.length > 0 && users.every((user) => user.chats30 == null);
+}
