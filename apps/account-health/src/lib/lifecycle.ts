@@ -52,7 +52,27 @@ export type Classification = {
 };
 
 export const ENGAGEMENT_TONES: Record<EngagementType, string> = {
-  non_user: "bg-white/15",
+  non_user: "bg-[#3d1400]",
+  intro: "bg-[#ffb089]",
+  churned: "bg-[#661f00]",
+  lapsed: "bg-[#992e00]",
+  passive: "bg-[#cc4200]",
+  sticky: "bg-[#ff5200]",
+  advanced: "bg-[#ffd4c2]",
+};
+
+export const ENGAGEMENT_TONE_INK: Record<EngagementType, string> = {
+  non_user: "text-white",
+  intro: "text-black",
+  churned: "text-white",
+  lapsed: "text-white",
+  passive: "text-white",
+  sticky: "text-white",
+  advanced: "text-black",
+};
+
+export const HEALTH_TONES: Record<EngagementType, string> = {
+  non_user: "bg-transparent",
   intro: "bg-[#f5c518]",
   churned: "bg-[#7f1d1d]",
   lapsed: "bg-[#f08080]",
@@ -61,24 +81,14 @@ export const ENGAGEMENT_TONES: Record<EngagementType, string> = {
   advanced: "bg-[#007a33]",
 };
 
-export const ENGAGEMENT_TONE_INK: Record<EngagementType, string> = {
-  non_user: "text-white",
+export const HEALTH_TONE_INK: Record<EngagementType, string> = {
+  non_user: "text-white/70",
   intro: "text-black",
   churned: "text-white",
   lapsed: "text-black",
   passive: "text-black",
   sticky: "text-black",
   advanced: "text-white",
-};
-
-export const ENGAGEMENT_CARD_WASH: Record<EngagementType, string> = {
-  non_user: "bg-transparent",
-  intro: "bg-[#f5c518]/15",
-  churned: "bg-[#7f1d1d]/45",
-  lapsed: "bg-[#f08080]/15",
-  passive: "bg-[#86efac]/15",
-  sticky: "bg-[#22c55e]/20",
-  advanced: "bg-[#007a33]/35",
 };
 
 export function emptyClassification(): Classification {
@@ -193,4 +203,8 @@ export function tally(
     if (row.power) powerCount += 1;
   }
   return { counts, powerCount };
+}
+
+export function convertedCount(counts: Record<EngagementType, number>): number {
+  return counts.sticky + counts.advanced;
 }

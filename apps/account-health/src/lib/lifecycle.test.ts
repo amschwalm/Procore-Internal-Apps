@@ -3,6 +3,8 @@ import {
   addUtcDays,
   calendarDateUTC,
   classifyEngagement,
+  convertedCount,
+  emptyCounts,
   tally,
   trailingWindowStart,
 } from "./lifecycle";
@@ -102,5 +104,15 @@ describe("tally", () => {
     expect(counts.non_user).toBe(1);
     expect(counts.sticky).toBe(2);
     expect(powerCount).toBe(2);
+  });
+});
+
+describe("convertedCount", () => {
+  it("adds sticky and advanced", () => {
+    const counts = emptyCounts();
+    counts.sticky = 5;
+    counts.advanced = 2;
+    counts.passive = 36;
+    expect(convertedCount(counts)).toBe(7);
   });
 });

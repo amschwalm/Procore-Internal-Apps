@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import {
-  ENGAGEMENT_CARD_WASH,
+  convertedCount,
   ENGAGEMENT_HINTS,
   ENGAGEMENT_LABELS,
   ENGAGEMENT_TONE_INK,
   ENGAGEMENT_TONES,
   ENGAGEMENT_TYPES,
+  HEALTH_TONE_INK,
+  HEALTH_TONES,
   type EngagementType,
 } from "@/lib/lifecycle";
 import type { ClassifiedUser, MetricsSnapshot } from "@/lib/types";
@@ -35,6 +37,7 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
 
   const active = selected ?? hovered;
   const total = snapshot.provisionedUsers;
+  const converted = convertedCount(snapshot.counts);
 
   const sortedUsers = useMemo(() => {
     const order = new Map(ENGAGEMENT_TYPES.map((type, index) => [type, index]));
@@ -72,7 +75,7 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em] text-pc-orange">
             <span>{total} users</span>
-            <span>{snapshot.powerCount} power</span>
+            <span>{converted} converted users</span>
             {snapshot.orgPower && snapshot.attribution === "unavailable" ? (
               <span>org builds</span>
             ) : null}
@@ -94,28 +97,18 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
                 onMouseEnter={() => setHovered(type)}
                 onMouseLeave={() => setHovered(null)}
                 onClick={() => toggle(type)}
-                className={`w-full overflow-hidden rounded-lg border text-left transition-colors ${
+                className={`w-full rounded-lg border px-2.5 py-2 text-left transition-colors ${
                   selected === type
                     ? "border-pc-orange bg-pc-orange text-white"
                     : active === type
-                      ? `border-white/40 ${ENGAGEMENT_CARD_WASH[type]}`
-                      : `border-white/10 ${ENGAGEMENT_CARD_WASH[type]} hover:border-white/30`
+                      ? "border-pc-orange/70 bg-black"
+                      : "border-white/10 bg-transparent text-white/80 hover:border-pc-orange/50"
                 }`}
               >
-                {type === "non_user" ? (
-                  <span className="block h-1 bg-transparent" />
-                ) : (
-                  <span className={`block h-1 ${ENGAGEMENT_TONES[type]}`} />
-                )}
-                <div className="px-2.5 pb-2 pt-1.5">
                 <div className="flex items-center gap-2">
-                  {type === "non_user" ? (
-                    <span className="h-2 w-2 rounded-sm border border-white/25" />
-                  ) : (
-                    <span className={`h-2 w-2 rounded-sm ${ENGAGEMENT_TONES[type]} ${
-                      selected === type ? "ring-1 ring-white/50" : ""
-                    }`} />
-                  )}
+                  <span className={`h-2 w-2 rounded-sm ${ENGAGEMENT_TONES[type]} ${
+                    selected === type ? "ring-1 ring-white/50" : ""
+                  }`} />
                   <span className="text-[11px] font-medium">
                     {ENGAGEMENT_LABELS[type]}
                   </span>
@@ -129,7 +122,6 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
                   selected === type ? "text-white/80" : "text-white/45"
                 }`}>
                   {ENGAGEMENT_HINTS[type]}
-                </div>
                 </div>
               </button>
             </li>
@@ -299,22 +291,12 @@ function UserTable({
                       {user.type === "non_user" ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-2 py-0.5 text-xs text-white/70">
                           {ENGAGEMENT_LABELS[user.type]}
-                          {user.power ? (
-                            <span className="font-mono text-[10px] uppercase tracking-wider text-pc-orange">
-                              Power
-                            </span>
-                          ) : null}
                         </span>
                       ) : (
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ENGAGEMENT_TONES[user.type]} ${ENGAGEMENT_TONE_INK[user.type]}`}
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${HEALTH_TONES[user.type]} ${HEALTH_TONE_INK[user.type]}`}
                         >
                           {ENGAGEMENT_LABELS[user.type]}
-                          {user.power ? (
-                            <span className="ml-1.5 font-mono text-[10px] uppercase tracking-wider opacity-80">
-                              Power
-                            </span>
-                          ) : null}
                         </span>
                       )}
                     </td>

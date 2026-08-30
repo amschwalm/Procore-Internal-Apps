@@ -15,6 +15,7 @@ describe("buildSampleSnapshot", () => {
     });
     expect(snapshot.provisionedUsers).toBe(60);
     expect(snapshot.powerCount).toBe(9);
+    expect(snapshot.counts.sticky + snapshot.counts.advanced).toBe(13);
     const sticky = snapshot.users.find((user) => user.type === "sticky");
     expect(sticky?.introDate).toBeTruthy();
     expect(sticky?.firstReturnDate).toBeTruthy();
