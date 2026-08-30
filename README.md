@@ -1,1 +1,9 @@
 # Procore-Internal-Apps
+
+Internal tools for Procore AI (customer success and professional services).
+
+## Account health
+
+Working metric definitions (product layer only): [`docs/account-health-metrics.md`](docs/account-health-metrics.md).
+
+This is a catalog, not an application. Dashboard scope, CRM joins, and call-transcript matching come later.
