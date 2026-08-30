@@ -22,6 +22,19 @@ export class DatagridError extends Error {
   }
 }
 
+export function publicDatagridError(error: unknown): string {
+  if (error instanceof DatagridError) {
+    if (error.status === 401) {
+      return "This API key was rejected. Use an org or account-scoped Datagrid key.";
+    }
+    if (error.status === 403) {
+      return "This key does not have permission to read the organization.";
+    }
+    return `Datagrid returned HTTP ${error.status}.`;
+  }
+  return error instanceof Error ? error.message : "Datagrid request failed";
+}
+
 async function datagridFetch<T>(
   apiKey: string,
   path: string,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { snapshotFromOrg } from "@/lib/classify-org";
-import { syncOrg } from "@/lib/datagrid";
+import { publicDatagridError, syncOrg } from "@/lib/datagrid";
 import { buildSampleSnapshot } from "@/lib/sample";
 import { readState, writeState } from "@/lib/store";
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     await writeState(state);
     return NextResponse.json({ snapshot: state.snapshot });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Sync failed";
+    const message = publicDatagridError(error);
     if (state.connections.datagrid) {
       state.connections.datagrid.lastError = message;
       await writeState(state);

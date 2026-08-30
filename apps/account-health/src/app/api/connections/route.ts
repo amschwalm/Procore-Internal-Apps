@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateKey } from "@/lib/datagrid";
+import { publicDatagridError, validateKey } from "@/lib/datagrid";
 import { publicSources } from "@/lib/sources";
 import { readState, writeState } from "@/lib/store";
 import type { Connections, SourceId } from "@/lib/types";
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
           : "Key accepted";
         next.lastError = undefined;
       } catch (error) {
-        next.lastError = error instanceof Error ? error.message : "Validation failed";
+        next.lastError = publicDatagridError(error);
         state.connections.datagrid = next;
         await writeState(state);
         return NextResponse.json(
