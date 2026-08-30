@@ -15,5 +15,10 @@ describe("buildSampleSnapshot", () => {
     });
     expect(snapshot.provisionedUsers).toBe(60);
     expect(snapshot.powerCount).toBe(9);
+    const sticky = snapshot.users.find((user) => user.type === "sticky");
+    expect(sticky?.introDate).toBeTruthy();
+    expect(sticky?.firstReturnDate).toBeTruthy();
+    expect(sticky?.lastActiveDate).toBeTruthy();
+    expect(sticky?.activeDates30.length).toBeGreaterThanOrEqual(5);
   });
 });

@@ -39,7 +39,12 @@ describe("classifyEngagement", () => {
       { createdAt: new Date("2026-06-01T12:00:00.000Z"), agentIds: ["a"] },
       { createdAt: new Date("2026-06-08T12:00:00.000Z"), agentIds: ["a"] },
     ];
-    expect(classifyEngagement(conversations, now).type).toBe("lapsed");
+    const result = classifyEngagement(conversations, now);
+    expect(result.type).toBe("lapsed");
+    expect(result.introDate).toBe("2026-06-01");
+    expect(result.firstReturnDate).toBe("2026-06-08");
+    expect(result.lastActiveDate).toBe("2026-06-08");
+    expect(result.activeDates30).toEqual([]);
   });
 
   it("passive: 1–4 active days in trailing 30", () => {

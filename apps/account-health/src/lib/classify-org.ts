@@ -49,8 +49,12 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
         type: "non_user",
         power: false,
         introDate: null,
+        firstReturnDate: null,
+        lastActiveDate: null,
         activeDays30: 0,
+        activeDates30: [],
         agents30: 0,
+        agentIds30: [],
       })),
     };
   }
@@ -74,8 +78,12 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
       type: result.type,
       power: false,
       introDate: result.introDate,
+      firstReturnDate: result.firstReturnDate,
+      lastActiveDate: result.lastActiveDate,
       activeDays30: result.activeDays30,
+      activeDates30: result.activeDates30,
       agents30: result.agents30,
+      agentIds30: result.agentIds30,
     };
   });
 

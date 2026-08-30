@@ -56,8 +56,12 @@ export type ClassifiedUser = {
   type: EngagementType;
   power: boolean;
   introDate: string | null;
+  firstReturnDate: string | null;
+  lastActiveDate: string | null;
   activeDays30: number;
+  activeDates30: string[];
   agents30: number;
+  agentIds30: string[];
 };
 
 export type MetricsSnapshot = {

@@ -39,10 +39,39 @@ export type Classification = {
   type: EngagementType;
   power: boolean;
   introDate: string | null;
+  firstReturnDate: string | null;
+  lastActiveDate: string | null;
   returned: boolean;
   activeDays30: number;
+  activeDates30: string[];
   agents30: number;
+  agentIds30: string[];
 };
+
+export const ENGAGEMENT_TONES: Record<EngagementType, string> = {
+  non_user: "bg-zinc-700",
+  intro: "bg-zinc-200",
+  churned: "bg-zinc-800",
+  lapsed: "bg-zinc-600",
+  passive: "bg-zinc-500",
+  sticky: "bg-zinc-300",
+  advanced: "bg-zinc-100",
+};
+
+export function emptyClassification(): Classification {
+  return {
+    type: "non_user",
+    power: false,
+    introDate: null,
+    firstReturnDate: null,
+    lastActiveDate: null,
+    returned: false,
+    activeDays30: 0,
+    activeDates30: [],
+    agents30: 0,
+    agentIds30: [],
+  };
+}
 
 export function calendarDateUTC(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -67,27 +96,25 @@ export function classifyEngagement(
   now: Date,
 ): Classification {
   if (conversations.length === 0) {
-    return {
-      type: "non_user",
-      power: false,
-      introDate: null,
-      returned: false,
-      activeDays30: 0,
-      agents30: 0,
-    };
+    return emptyClassification();
   }
 
   const sorted = [...conversations].sort(
     (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
   );
-  const introDate = calendarDateUTC(sorted[0].createdAt);
+  const dates = sorted.map((c) => calendarDateUTC(c.createdAt));
+  const introDate = dates[0];
   const today = calendarDateUTC(now);
-  const returned = sorted.some((c) => calendarDateUTC(c.createdAt) !== introDate);
+  const firstReturnDate = dates.find((date) => date !== introDate) ?? null;
+  const lastActiveDate = dates[dates.length - 1];
+  const returned = firstReturnDate !== null;
 
   const windowStart = trailingWindowStart(now);
   const recent = sorted.filter((c) => c.createdAt >= windowStart && c.createdAt <= now);
-  const activeDays30 = new Set(recent.map((c) => calendarDateUTC(c.createdAt))).size;
-  const agents30 = new Set(recent.flatMap((c) => c.agentIds)).size;
+  const activeDates30 = [...new Set(recent.map((c) => calendarDateUTC(c.createdAt)))].sort();
+  const activeDays30 = activeDates30.length;
+  const agentIds30 = [...new Set(recent.flatMap((c) => c.agentIds))].sort();
+  const agents30 = agentIds30.length;
 
   let type: EngagementType;
   if (introDate === today) {
@@ -108,9 +135,13 @@ export function classifyEngagement(
     type,
     power: false,
     introDate,
+    firstReturnDate,
+    lastActiveDate,
     returned,
     activeDays30,
+    activeDates30,
     agents30,
+    agentIds30,
   };
 }
 

@@ -11,6 +11,69 @@ type Spec = {
 
 const now = new Date("2026-08-30T15:00:00.000Z");
 
+const PEOPLE = [
+  "Ava Chen",
+  "Marcus Cole",
+  "Priya Shah",
+  "Jonah Hale",
+  "Elena Ruiz",
+  "Noah Patel",
+  "Grace Kim",
+  "Theo Ward",
+  "Maya Brooks",
+  "Owen Blake",
+  "Sofia Nguyen",
+  "Caleb Orth",
+  "Lila Grant",
+  "Henry Cho",
+  "Nora Ellis",
+  "Isaac Vega",
+  "Ruby Stone",
+  "Felix Park",
+  "Ivy Lang",
+  "James Ortiz",
+  "Clara West",
+  "Adrian Fox",
+  "Quinn Murphy",
+  "Sasha Reed",
+  "Leo Hart",
+  "Nina Volkov",
+  "Chris Dale",
+  "Amara Singh",
+  "Ben Walsh",
+  "Jade Lin",
+  "Evan Cross",
+  "Tara Mehta",
+  "Will Frost",
+  "Hope Adler",
+  "Ryan Peck",
+  "Zoe Klein",
+  "Paul Nunez",
+  "Iris Bell",
+  "Sam Yoon",
+  "Kate Morse",
+  "Drew Ibarra",
+  "Lena Scott",
+  "Miles Chen",
+  "Amy Rowe",
+  "Cole Barnett",
+  "Vera Shah",
+  "Nate Kim",
+  "Pearl Diaz",
+  "Hugo Berg",
+  "June Park",
+  "Omar Said",
+  "Dana Wu",
+  "Reid Alvarez",
+  "Skye Martin",
+  "Troy Nash",
+  "Willa Cho",
+  "Yves Moreau",
+  "Bea Knox",
+  "Cora Flint",
+  "Dex Lane",
+];
+
 const SPECS: Spec[] = [
   ...Array.from({ length: 18 }, (_, i) => ({
     id: `non-${i}`,
@@ -47,27 +110,43 @@ const SPECS: Spec[] = [
     id: `adv-${i}`,
     type: "advanced" as const,
     daysAgo: [16, 8, 5, 3, 2, 1],
-    agents: [["a"], ["a"], ["b"], ["a"], ["b"], ["a"]],
+    agents: [
+      ["Research Agent"],
+      ["Research Agent"],
+      ["Weekly Log"],
+      ["Research Agent"],
+      ["Weekly Log"],
+      ["Research Agent"],
+    ],
     power: true,
   })),
 ];
 
+function emailFromName(name: string): string {
+  return `${name.toLowerCase().replace(" ", ".")}@acme.test`;
+}
+
 export function buildSampleSnapshot(computedAt = now): MetricsSnapshot {
-  const users: ClassifiedUser[] = SPECS.map((spec) => {
-    const conversations = spec.daysAgo.map((daysAgo, index) => ({
+  const users: ClassifiedUser[] = SPECS.map((spec, index) => {
+    const conversations = spec.daysAgo.map((daysAgo, convIndex) => ({
       createdAt: addUtcDays(computedAt, -daysAgo),
-      agentIds: spec.agents?.[index] ?? ["agent-a"],
+      agentIds: spec.agents?.[convIndex] ?? ["Ask Agent"],
     }));
     const result = classifyEngagement(conversations, computedAt);
+    const name = PEOPLE[index] ?? spec.id;
     return {
       id: spec.id,
-      email: `${spec.id}@example.com`,
-      name: spec.id,
+      email: emailFromName(name),
+      name,
       type: result.type,
       power: Boolean(spec.power),
       introDate: result.introDate,
+      firstReturnDate: result.firstReturnDate,
+      lastActiveDate: result.lastActiveDate,
       activeDays30: result.activeDays30,
+      activeDates30: result.activeDates30,
       agents30: result.agents30,
+      agentIds30: result.agentIds30,
     };
   });
 
