@@ -73,7 +73,7 @@ export function OverviewActions({
           type="button"
           disabled={running}
           onClick={() => run("sample")}
-          className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-200 disabled:opacity-40"
+          className="rounded-md border border-white/25 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
         >
           Load sample
         </button>
@@ -81,14 +81,14 @@ export function OverviewActions({
           type="button"
           disabled={running || !hasDatagrid}
           onClick={() => run("datagrid")}
-          className="rounded-md bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-md bg-pc-orange px-3 py-1.5 text-xs font-medium text-white hover:bg-pc-orange-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
           {running && job.mode === "datagrid" ? `Syncing · ${elapsed}` : "Sync Datagrid"}
         </button>
         {!hasDatagrid ? (
-          <span className="text-xs text-zinc-600">Add a Datagrid key on Sources to sync the seat list.</span>
+          <span className="text-xs text-white/45">Add a Datagrid key on Sources to sync the seat list.</span>
         ) : (
-          <span className="text-xs text-zinc-600">
+          <span className="text-xs text-white/45">
             Datagrid supplies the seat list. Upload an insights export to assign stages.
           </span>
         )}
@@ -104,7 +104,7 @@ export function OverviewActions({
 
       {job.steps.length > 0 ? <SyncLog job={job} elapsed={elapsed} /> : null}
       {error && job.status !== "error" ? (
-        <p className="text-xs text-zinc-400">{error}</p>
+        <p className="text-xs text-white/70">{error}</p>
       ) : null}
     </div>
   );
@@ -115,8 +115,8 @@ function SyncLog({ job, elapsed }: { job: SyncJob; elapsed: string }) {
   const failed = job.status === "error";
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/80 px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+    <div className="rounded-xl border border-white/10 bg-pc-panel px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-pc-orange">
         <span>
           {job.status === "running"
             ? "Sync in progress"
@@ -128,7 +128,7 @@ function SyncLog({ job, elapsed }: { job: SyncJob; elapsed: string }) {
       </div>
 
       {failed ? (
-        <p className="mt-2 text-sm text-zinc-200">
+        <p className="mt-2 text-sm text-white">
           Failed {job.finishedAt ? `at ${formatClock(job.finishedAt)}` : ""}
           {job.failedStep ? ` during ${job.failedStep}` : ""}. {job.error}
         </p>
@@ -138,11 +138,11 @@ function SyncLog({ job, elapsed }: { job: SyncJob; elapsed: string }) {
         {job.steps.map((step, index) => (
           <li
             key={`${step.at}-${index}`}
-            className={step.level === "error" ? "text-zinc-200" : "text-zinc-500"}
+            className={step.level === "error" ? "text-white" : "text-white/50"}
           >
-            <span className="text-zinc-600">{formatClock(step.at)}</span>
-            <span className="mx-2 text-zinc-700">{step.step}</span>
-            <span className={step.level === "error" ? "text-zinc-100" : "text-zinc-400"}>
+            <span className="text-white/35">{formatClock(step.at)}</span>
+            <span className="mx-2 text-pc-orange/70">{step.step}</span>
+            <span className={step.level === "error" ? "text-white" : "text-white/70"}>
               {step.message}
             </span>
           </li>
@@ -150,7 +150,7 @@ function SyncLog({ job, elapsed }: { job: SyncJob; elapsed: string }) {
       </ol>
 
       {job.status === "running" && latest ? (
-        <p className="mt-2 text-xs text-zinc-400">Now: {latest.message}</p>
+        <p className="mt-2 text-xs text-white/70">Now: {latest.message}</p>
       ) : null}
     </div>
   );

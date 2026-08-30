@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Account Health",
+  title: "Account Health · Procore",
   description: "Internal account health for Procore AI customer success.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({

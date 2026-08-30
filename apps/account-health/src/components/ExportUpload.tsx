@@ -43,7 +43,7 @@ export function ExportUpload({
         type="button"
         disabled={disabled || busy}
         onClick={() => inputRef.current?.click()}
-        className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded-md border border-pc-orange px-3 py-1.5 text-xs font-medium text-pc-orange hover:bg-pc-orange hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
       >
         {busy ? "Uploading…" : "Upload export"}
       </button>
@@ -71,15 +71,15 @@ export function ExportUpload({
         }}
         className={`rounded-xl border border-dashed px-4 py-4 text-xs leading-relaxed ${
           drag
-            ? "border-zinc-400 bg-zinc-900 text-zinc-300"
-            : "border-zinc-800 text-zinc-600"
+            ? "border-pc-orange bg-pc-orange/10 text-white"
+            : "border-pc-orange/40 text-white/45"
         }`}
       >
         Drop a Control Tower or Mixpanel insights CSV / Excel here. Needs an Email
         column and a Time column. This sample format works: question, answer, and
         the Q&amp;A unique flag.
       </div>
-      {note ? <p className="text-xs text-zinc-400">{note}</p> : null}
+      {note ? <p className="text-xs text-white/70">{note}</p> : null}
     </div>
   );
 }

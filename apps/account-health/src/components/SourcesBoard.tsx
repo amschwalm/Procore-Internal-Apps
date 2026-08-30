@@ -11,8 +11,8 @@ export function SourcesBoard({ initial }: { initial: PublicSourceState[] }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight text-zinc-50">Sources</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-500">
+        <h1 className="text-2xl font-medium tracking-tight text-white">Sources</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/50">
           Paste credentials here. They stay on this server. Datagrid is the seat
           list. Person-level stages come from an insights CSV or Excel uploaded on
           Overview — not from a Mixpanel API. The other systems are saved so the
@@ -21,7 +21,7 @@ export function SourcesBoard({ initial }: { initial: PublicSourceState[] }) {
       </div>
 
       {message ? (
-        <p className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-sm text-zinc-300">
+        <p className="rounded-lg border border-pc-orange/40 bg-pc-panel px-4 py-3 text-sm text-white">
           {message}
         </p>
       ) : null}
@@ -96,26 +96,26 @@ function SourceCard({
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+    <section className="rounded-2xl border border-white/10 bg-pc-panel p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-[15px] font-medium text-zinc-100">{source.label}</h2>
+            <h2 className="text-[15px] font-medium text-white">{source.label}</h2>
             <StatusPill source={source} />
           </div>
-          <p className="mt-1 max-w-xl text-sm text-zinc-500">{source.purpose}</p>
+          <p className="mt-1 max-w-xl text-sm text-white/50">{source.purpose}</p>
         </div>
         {source.last4 ? (
-          <p className="font-mono text-[11px] text-zinc-600">••••{source.last4}</p>
+          <p className="font-mono text-[11px] text-white/35">••••{source.last4}</p>
         ) : null}
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {source.fields.map((field) => (
-          <label key={field.name} className="block text-xs text-zinc-400">
+          <label key={field.name} className="block text-xs text-white/60">
             {field.label}
             {field.filled ? (
-              <span className="ml-2 text-zinc-600">saved</span>
+              <span className="ml-2 text-pc-orange">saved</span>
             ) : null}
             <input
               type={field.type}
@@ -125,17 +125,17 @@ function SourceCard({
               onChange={(event) =>
                 setDraft((current) => ({ ...current, [field.name]: event.target.value }))
               }
-              className="mt-1.5 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-700 focus:border-zinc-500"
+              className="mt-1.5 w-full rounded-lg border border-white/15 bg-black px-3 py-2 text-sm text-white outline-none placeholder:text-white/25 focus:border-pc-orange"
             />
           </label>
         ))}
       </div>
 
       {source.identityLabel ? (
-        <p className="mt-3 text-xs text-zinc-500">{source.identityLabel}</p>
+        <p className="mt-3 text-xs text-white/50">{source.identityLabel}</p>
       ) : null}
       {source.lastError ? (
-        <p className="mt-3 text-xs text-zinc-400">{source.lastError}</p>
+        <p className="mt-3 text-xs text-white/70">{source.lastError}</p>
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -143,7 +143,7 @@ function SourceCard({
           type="button"
           disabled={busy || (!dirty && !source.connected)}
           onClick={() => submit(false)}
-          className="rounded-md border border-zinc-700 bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-md bg-pc-orange px-3 py-1.5 text-xs font-medium text-white hover:bg-pc-orange-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
           {busy ? "Saving…" : "Save"}
         </button>
@@ -152,12 +152,12 @@ function SourceCard({
             type="button"
             disabled={busy || (!dirty && !source.connected)}
             onClick={() => submit(true)}
-            className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md border border-white/25 px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             Test connection
           </button>
         ) : (
-          <span className="self-center text-[11px] uppercase tracking-[0.16em] text-zinc-600">
+          <span className="self-center text-[11px] uppercase tracking-[0.16em] text-white/35">
             Saved only
           </span>
         )}
@@ -172,7 +172,7 @@ function StatusPill({ source }: { source: PublicSourceState }) {
   else if (source.lastValidatedAt) label = "Ready";
   else if (source.connected) label = "Saved";
   return (
-    <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-zinc-400">
+    <span className="rounded-full border border-pc-orange/50 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-pc-orange">
       {label}
     </span>
   );

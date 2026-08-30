@@ -49,13 +49,23 @@ export type Classification = {
 };
 
 export const ENGAGEMENT_TONES: Record<EngagementType, string> = {
-  non_user: "bg-zinc-700",
-  intro: "bg-zinc-200",
-  churned: "bg-zinc-800",
-  lapsed: "bg-zinc-600",
-  passive: "bg-zinc-500",
-  sticky: "bg-zinc-300",
-  advanced: "bg-zinc-100",
+  non_user: "bg-[#3d1400]",
+  intro: "bg-[#ffb089]",
+  churned: "bg-[#661f00]",
+  lapsed: "bg-[#992e00]",
+  passive: "bg-[#cc4200]",
+  sticky: "bg-[#ff5200]",
+  advanced: "bg-[#ffd4c2]",
+};
+
+export const ENGAGEMENT_TONE_INK: Record<EngagementType, string> = {
+  non_user: "text-white",
+  intro: "text-black",
+  churned: "text-white",
+  lapsed: "text-white",
+  passive: "text-white",
+  sticky: "text-white",
+  advanced: "text-black",
 };
 
 export function emptyClassification(): Classification {

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   ENGAGEMENT_HINTS,
   ENGAGEMENT_LABELS,
+  ENGAGEMENT_TONE_INK,
   ENGAGEMENT_TONES,
   ENGAGEMENT_TYPES,
   type EngagementType,
@@ -58,17 +59,17 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40">
-      <div className="border-b border-zinc-800/80 px-6 py-5">
+    <section className="overflow-hidden rounded-2xl border border-white/10 bg-pc-panel">
+      <div className="border-b border-white/10 px-6 py-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-lg font-medium tracking-tight text-zinc-50">User types</h2>
-            <p className="mt-1 max-w-2xl text-sm text-zinc-500">
+            <h2 className="text-lg font-medium tracking-tight text-white">User types</h2>
+            <p className="mt-1 max-w-2xl text-sm text-white/50">
               Click a segment to filter the table. Dates are the completed Q&A days
               that assigned the stage.
             </p>
           </div>
-          <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+          <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em] text-pc-orange">
             <span>{total} users</span>
             <span>{snapshot.powerCount} power</span>
             {snapshot.orgPower && snapshot.attribution === "unavailable" ? (
@@ -94,27 +95,27 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
                 onClick={() => toggle(type)}
                 className={`w-full rounded-lg border px-2.5 py-2 text-left transition-colors ${
                   selected === type
-                    ? "border-zinc-300 bg-zinc-100 text-zinc-950"
+                    ? "border-pc-orange bg-pc-orange text-white"
                     : active === type
-                      ? "border-zinc-600 bg-zinc-900"
-                      : "border-zinc-800 bg-transparent text-zinc-300 hover:border-zinc-700"
+                      ? "border-pc-orange/70 bg-black"
+                      : "border-white/10 bg-transparent text-white/80 hover:border-pc-orange/50"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <span className={`h-2 w-2 rounded-sm ${ENGAGEMENT_TONES[type]} ${
-                    selected === type ? "ring-1 ring-zinc-950/40" : ""
+                    selected === type ? "ring-1 ring-white/50" : ""
                   }`} />
                   <span className="text-[11px] font-medium">
                     {ENGAGEMENT_LABELS[type]}
                   </span>
                 </div>
                 <div className={`mt-1 font-mono text-lg tabular-nums ${
-                  selected === type ? "text-zinc-950" : "text-zinc-100"
+                  selected === type ? "text-white" : "text-white"
                 }`}>
                   {snapshot.counts[type]}
                 </div>
                 <div className={`text-[10px] leading-snug ${
-                  selected === type ? "text-zinc-600" : "text-zinc-500"
+                  selected === type ? "text-white/80" : "text-white/45"
                 }`}>
                   {ENGAGEMENT_HINTS[type]}
                 </div>
@@ -136,7 +137,7 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
       />
 
       {snapshot.attributionNote ? (
-        <p className="border-t border-zinc-800/80 px-6 py-3 text-xs leading-relaxed text-zinc-500">
+        <p className="border-t border-white/10 px-6 py-3 text-xs leading-relaxed text-white/45">
           {snapshot.attributionNote}
         </p>
       ) : null}
@@ -159,9 +160,9 @@ function StackedBar({
 
   return (
     <div className="mt-6">
-      <div className="flex h-10 overflow-hidden rounded-md bg-zinc-950 ring-1 ring-zinc-800">
+      <div className="flex h-10 overflow-hidden rounded-md bg-black ring-1 ring-white/10">
         {total === 0 ? (
-          <div className="flex flex-1 items-center justify-center text-[11px] text-zinc-600">
+          <div className="flex flex-1 items-center justify-center text-[11px] text-white/40">
             No users computed
           </div>
         ) : (
@@ -183,7 +184,7 @@ function StackedBar({
                 style={{ flexGrow: count, flexBasis: 0 }}
               >
                 {count / total >= 0.08 ? (
-                  <span className="absolute inset-0 flex items-center justify-center font-mono text-[11px] text-zinc-950/80">
+                  <span className={`absolute inset-0 flex items-center justify-center font-mono text-[11px] ${ENGAGEMENT_TONE_INK[type]}`}>
                     {count}
                   </span>
                 ) : null}
@@ -217,23 +218,23 @@ function UserTable({
 }) {
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 px-6 py-3">
-        <div className="text-sm text-zinc-400">
-          <span className="text-zinc-200">{users.length}</span>
-          <span className="text-zinc-600"> / {total}</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-3">
+        <div className="text-sm text-white/60">
+          <span className="text-white">{users.length}</span>
+          <span className="text-white/35"> / {total}</span>
           {selected ? (
-            <span className="ml-2 text-zinc-400">
+            <span className="ml-2 text-white/70">
               {ENGAGEMENT_LABELS[selected]}
               <button
                 type="button"
                 onClick={onClear}
-                className="ml-2 text-xs text-zinc-500 underline-offset-2 hover:text-zinc-300 hover:underline"
+                className="ml-2 text-xs text-pc-orange underline-offset-2 hover:underline"
               >
                 Clear
               </button>
             </span>
           ) : (
-            <span className="ml-2 text-zinc-600">all stages</span>
+            <span className="ml-2 text-white/35">all stages</span>
           )}
         </div>
         <input
@@ -241,14 +242,14 @@ function UserTable({
           value={query}
           onChange={(event) => onQuery(event.target.value)}
           placeholder="Filter name or email"
-          className="w-56 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-zinc-500"
+          className="w-56 rounded-md border border-white/15 bg-black px-3 py-1.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-pc-orange"
         />
       </div>
 
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
-          <thead className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">
-            <tr className="border-b border-zinc-800/80">
+          <thead className="text-[11px] uppercase tracking-[0.14em] text-pc-orange">
+            <tr className="border-b border-white/10">
               <th className="px-6 py-3 font-medium">User</th>
               <th className="px-3 py-3 font-medium">Stage</th>
               <th className="px-3 py-3 font-medium">Intro</th>
@@ -261,7 +262,7 @@ function UserTable({
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-10 text-center text-sm text-zinc-500">
+                <td colSpan={7} className="px-6 py-10 text-center text-sm text-white/45">
                   No users in this view.
                 </td>
               </tr>
@@ -273,39 +274,39 @@ function UserTable({
                     key={user.id}
                     onMouseEnter={() => onHoverType(user.type)}
                     onMouseLeave={() => onHoverType(null)}
-                    className={`border-b border-zinc-800/50 transition-opacity ${
+                    className={`border-b border-white/10 transition-opacity ${
                       dimmed ? "opacity-30" : "opacity-100"
                     }`}
                   >
                     <td className="px-6 py-3">
-                      <div className="font-medium text-zinc-100">{user.name ?? user.id}</div>
-                      <div className="text-xs text-zinc-500">{user.email ?? "—"}</div>
+                      <div className="font-medium text-white">{user.name ?? user.id}</div>
+                      <div className="text-xs text-white/45">{user.email ?? "—"}</div>
                     </td>
                     <td className="px-3 py-3">
-                      <span className="inline-flex items-center gap-2 text-zinc-200">
+                      <span className="inline-flex items-center gap-2 text-white">
                         <span className={`h-2 w-2 rounded-sm ${ENGAGEMENT_TONES[user.type]}`} />
                         {ENGAGEMENT_LABELS[user.type]}
                         {user.power ? (
-                          <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                          <span className="font-mono text-[10px] uppercase tracking-wider text-pc-orange">
                             Power
                           </span>
                         ) : null}
                       </span>
                     </td>
-                    <td className="px-3 py-3 font-mono text-xs text-zinc-300">
+                    <td className="px-3 py-3 font-mono text-xs text-white/80">
                       {formatDay(user.introDate)}
                     </td>
-                    <td className="px-3 py-3 font-mono text-xs text-zinc-300">
+                    <td className="px-3 py-3 font-mono text-xs text-white/80">
                       {formatDay(user.firstReturnDate)}
                     </td>
-                    <td className="px-3 py-3 font-mono text-xs text-zinc-300">
+                    <td className="px-3 py-3 font-mono text-xs text-white/80">
                       {formatDay(user.lastActiveDate)}
                     </td>
-                    <td className="max-w-56 px-3 py-3 font-mono text-xs text-zinc-400">
-                      <span className="text-zinc-200">{user.activeDays30}</span>
-                      <span className="ml-2 text-zinc-500">{formatDays(user.activeDates30 ?? [])}</span>
+                    <td className="max-w-56 px-3 py-3 font-mono text-xs text-white/60">
+                      <span className="text-white">{user.activeDays30}</span>
+                      <span className="ml-2 text-white/45">{formatDays(user.activeDates30 ?? [])}</span>
                     </td>
-                    <td className="px-6 py-3 text-xs text-zinc-400">
+                    <td className="px-6 py-3 text-xs text-white/50">
                       {(user.agentIds30 ?? []).length === 0 ? "—" : user.agentIds30.join(", ")}
                     </td>
                   </tr>
