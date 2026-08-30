@@ -20,6 +20,7 @@ Later layers (HubSpot, Salesforce, Gong, Avoma) are parked at the end. They are 
 | Sticky / Passive threshold | **≥5** distinct active calendar days in the trailing 30 days = Sticky or Advanced. **1–4** = Passive. Exactly 5 is Sticky/Advanced (the original “>5” / “<5” left 5 unassigned). |
 | Sticky vs Advanced | Anyone with ≥5 active days is **exactly one** of Sticky or Advanced. **Advanced** = more than **100** completed chats in the trailing 30 days. **Sticky** = 100 or fewer. Agent count is not the split. |
 | Power User | **Overlay flag**, not a mutually exclusive rung. A user can be Passive and a builder. |
+| UI labels vs spec names | The dashboard displays U4 Lapsed as **Passive** and U5 Passive as **Active** (friendlier wording for CS/PS). Spec IDs and internal field names (`lapsed`, `passive`) are unchanged below for traceability. |
 
 ---
 
@@ -380,6 +381,34 @@ For each directory row:
 6. Persist `{org_id, engagement_type, power, T0, t_intro, t_basic, t_sticky, t_advanced, t_power, computed_at}`.
 
 Rate limits are per teamspace. Message paging is the expensive path.
+
+### 8.10 Time to Conversion (proposed dashboard metric)
+
+**Not implemented yet.** The Overview page wireframes this as a "Proposed" tile so CS/PS can react to the definition before we build it.
+
+**Converted** = Sticky or Advanced (the two rungs with ≥5 active days in a trailing 30). Both require the same entry gate — ≥5 active days — so the conversion moment does not depend on the Sticky/Advanced chat-count split.
+
+Proposed formula, per user:
+
+```
+entry_date(user) = earliest date d in the user's active dates such that
+                    count(distinct active dates in [d-29, d]) >= 5
+time_to_conversion(user) = entry_date(user) - intro_date(user), in days
+```
+
+Account-level rollup:
+
+- **Median** `time_to_conversion` across users who have converted (skip mean; a few very fast or very slow users would distort it).
+- Report alongside **% of eligible users converted by day 30 / 60 / 90** (eligible = intro date is at least that many days in the past), since median alone hides right-censored users who have not converted yet or never will.
+
+Feasibility:
+
+| Path | Status | Why |
+| --- | --- | --- |
+| Insights CSV/Excel upload | **Ready** | We already hold each person's full history of completed Q&A rows and can replay it day by day to find `entry_date`. No new data needed. |
+| Datagrid API only | **Blocked** | Same author gap as U1–U7 person-level assignment (no `user_id` on conversations/messages). Only the account-as-actor T-Sticky/T-Advanced clocks in [§8.7](#87-time-to-stage) apply. |
+
+Implementation sketch (insights path): for each user's sorted active dates, walk forward and, for each date, count active dates in the trailing 30 ending there; stop at the first date where that count reaches 5. This is the same trailing-window rule already used for `activeDays30`, just evaluated historically instead of only at "now."
 
 ---
 

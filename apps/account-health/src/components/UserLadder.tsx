@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import {
+  activeUserCount,
+  conversionRate,
   convertedCount,
   ENGAGEMENT_HINTS,
   ENGAGEMENT_LABELS,
@@ -46,7 +48,9 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
 
   const active = selected ?? hovered;
   const total = snapshot.provisionedUsers;
-  const converted = convertedCount(snapshot.counts);
+  const activeUsers = activeUserCount(snapshot.counts);
+  const stickyUsers = convertedCount(snapshot.counts);
+  const percentConverted = conversionRate(snapshot.counts);
   const chatsMissing = snapshotMissingChatCounts(snapshot.users);
 
   const visibleUsers = useMemo(() => {
@@ -63,19 +67,24 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
       <div className="border-b border-white/10 px-6 py-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-lg font-medium tracking-tight text-white">User types</h2>
+            <h2 className="text-lg font-medium tracking-tight text-white">User Conversion</h2>
             <p className="mt-1 max-w-2xl text-sm text-white/50">
               Click a segment or use the table filters. Click a column header to sort.
             </p>
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em] text-pc-orange">
             <span>{total} users</span>
-            <span>{converted} converted users</span>
             {snapshot.orgPower && snapshot.attribution === "unavailable" ? (
               <span>org builds</span>
             ) : null}
           </div>
         </div>
+
+        <MetricsRow
+          activeUsers={activeUsers}
+          stickyUsers={stickyUsers}
+          percentConverted={percentConverted}
+        />
 
         <StackedBar
           snapshot={snapshot}
@@ -156,6 +165,79 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
         </p>
       ) : null}
     </section>
+  );
+}
+
+function MetricsRow({
+  activeUsers,
+  stickyUsers,
+  percentConverted,
+}: {
+  activeUsers: number;
+  stickyUsers: number;
+  percentConverted: number | null;
+}) {
+  return (
+    <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <MetricTile
+        label="Active users"
+        value={activeUsers}
+        hint="Active + Sticky + Advanced"
+      />
+      <MetricTile
+        label="Sticky users"
+        value={stickyUsers}
+        hint="Sticky + Advanced"
+      />
+      <MetricTile
+        label="% converted"
+        value={percentConverted === null ? "—" : `${percentConverted.toFixed(0)}%`}
+        hint="Sticky or Advanced ÷ all users excluding Non-User"
+      />
+      <MetricTile
+        label="Time to conversion"
+        value="—"
+        hint="Proposed: median days from Intro to first Sticky/Advanced day"
+        proposed
+      />
+    </div>
+  );
+}
+
+function MetricTile({
+  label,
+  value,
+  hint,
+  proposed,
+}: {
+  label: string;
+  value: number | string;
+  hint: string;
+  proposed?: boolean;
+}) {
+  return (
+    <div
+      className={`relative rounded-xl border px-4 py-3 ${
+        proposed
+          ? "border-dashed border-pc-orange/30 bg-transparent"
+          : "border-white/10 bg-black/40"
+      }`}
+    >
+      {proposed ? (
+        <span className="absolute right-3 top-3 rounded-full border border-pc-orange/40 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em] text-pc-orange/80">
+          Proposed
+        </span>
+      ) : null}
+      <div className="text-[11px] uppercase tracking-[0.16em] text-pc-orange">{label}</div>
+      <div
+        className={`mt-1.5 font-mono text-2xl tabular-nums ${
+          proposed ? "text-white/35" : "text-white"
+        }`}
+      >
+        {value}
+      </div>
+      <div className="mt-1 text-[11px] leading-snug text-white/45">{hint}</div>
+    </div>
   );
 }
 

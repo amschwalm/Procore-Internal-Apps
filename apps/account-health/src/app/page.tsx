@@ -56,14 +56,6 @@ export default async function OverviewPage() {
 
       <div className="space-y-6">
         <UserLadder key={state.accountId ?? "none"} snapshot={snapshot} />
-
-        <section className="rounded-2xl border border-dashed border-pc-orange/40 bg-pc-panel px-6 py-8">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-pc-orange">Next widget</p>
-          <h2 className="mt-2 text-lg font-medium text-white">Time to value</h2>
-          <p className="mt-2 max-w-xl text-sm text-white/50">
-            Days from Intro to Sticky or Advanced. Same sources. Not computed yet.
-          </p>
-        </section>
       </div>
     </AppShell>
   );
