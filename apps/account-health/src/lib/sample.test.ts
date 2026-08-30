@@ -21,5 +21,6 @@ describe("buildSampleSnapshot", () => {
     expect(sticky?.firstReturnDate).toBeTruthy();
     expect(sticky?.lastActiveDate).toBeTruthy();
     expect(sticky?.activeDates30.length).toBeGreaterThanOrEqual(5);
+    expect(snapshot.users.every((user) => (user.chats90 ?? 0) >= (user.chats30 ?? 0))).toBe(true);
   });
 });

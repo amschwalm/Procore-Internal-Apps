@@ -57,6 +57,7 @@ describe("snapshotFromInsights", () => {
     const snapshot = snapshotFromInsights(parseInsightsTable(tableFromCsv(rows.join("\n"))), { now });
     expect(snapshot.counts.advanced).toBe(1);
     expect(snapshot.users[0]?.chats30).toBe(101);
+    expect(snapshot.users[0]?.chats90).toBe(101);
   });
 
   it("marks directory people who are missing from the file as Non-User", () => {
@@ -96,5 +97,6 @@ describe("Grunley insights export", () => {
     expect(sticky).toHaveLength(3);
     expect(sticky.every((user) => (user.chats30 ?? 0) >= user.activeDays30)).toBe(true);
     expect(Math.max(...sticky.map((user) => user.chats30 ?? 0))).toBeGreaterThan(0);
+    expect(sticky.every((user) => (user.chats90 ?? 0) >= (user.chats30 ?? 0))).toBe(true);
   });
 });

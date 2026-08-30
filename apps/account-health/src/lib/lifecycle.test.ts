@@ -19,6 +19,10 @@ describe("trailingWindowStart", () => {
   it("covers 30 calendar days ending today", () => {
     expect(calendarDateUTC(trailingWindowStart(now))).toBe("2026-08-01");
   });
+
+  it("covers 90 calendar days ending today", () => {
+    expect(calendarDateUTC(trailingWindowStart(now, 90))).toBe("2026-06-02");
+  });
 });
 
 describe("classifyEngagement", () => {
@@ -61,7 +65,22 @@ describe("classifyEngagement", () => {
     const result = classifyEngagement(conversations, now);
     expect(result.activeDays30).toBe(5);
     expect(result.chats30).toBe(5);
+    expect(result.chats90).toBe(5);
     expect(result.type).toBe("sticky");
+  });
+
+  it("chats90 counts chats outside the 30-day window but inside 90", () => {
+    const conversations = [conv(85), conv(60), conv(8), conv(6), conv(4), conv(2), conv(1)];
+    const result = classifyEngagement(conversations, now);
+    expect(result.chats30).toBe(5);
+    expect(result.chats90).toBe(7);
+  });
+
+  it("chats90 excludes conversations older than 90 days", () => {
+    const conversations = [conv(95), conv(8), conv(6), conv(4), conv(2), conv(1)];
+    const result = classifyEngagement(conversations, now);
+    expect(result.chats30).toBe(5);
+    expect(result.chats90).toBe(5);
   });
 
   it("sticky even with two agents if chats stay at or under 100", () => {

@@ -144,9 +144,10 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
 
       {chatsMissing ? (
         <p className="border-t border-white/10 px-6 py-3 text-xs leading-relaxed text-pc-orange">
-          Chats in last 30 is empty because this snapshot was saved before chat
-          counts were stored. Upload the same insights Excel or CSV again — each
-          completed Q&A row in the trailing 30 days becomes that person’s count.
+          Chats in last 30 or 90 is empty because this snapshot was saved before
+          those counts were stored. Upload the same insights Excel or CSV again —
+          each completed Q&A row in the matching trailing window becomes that
+          person’s count.
         </p>
       ) : null}
       {snapshot.attributionNote ? (
@@ -297,7 +298,7 @@ function UserTable({
               <SortHeader label="Last active" column="lastActive" sort={sort} onSort={onSort} className="px-3 py-3" />
               <SortHeader label="Days in last 30" column="days" sort={sort} onSort={onSort} className="px-3 py-3" />
               <SortHeader label="Chats in last 30" column="chats" sort={sort} onSort={onSort} className="px-3 py-3" />
-              <SortHeader label="Agents in last 30" column="agents" sort={sort} onSort={onSort} className="px-6 py-3" />
+              <SortHeader label="Chats in last 90" column="chats90" sort={sort} onSort={onSort} className="px-6 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -352,8 +353,8 @@ function UserTable({
                     <td className="px-3 py-3 font-mono text-xs text-white">
                       {user.chats30 ?? "—"}
                     </td>
-                    <td className="px-6 py-3 text-xs text-white/50">
-                      {(user.agentIds30 ?? []).length === 0 ? "—" : user.agentIds30.join(", ")}
+                    <td className="px-6 py-3 font-mono text-xs text-white">
+                      {user.chats90 ?? "—"}
                     </td>
                   </tr>
                 );

@@ -28,6 +28,7 @@ const rows: ClassifiedUser[] = [
     lastActiveDate: "2026-08-20",
     activeDays30: 6,
     chats30: 12,
+    chats90: 20,
     agents30: 1,
   }),
   user({
@@ -39,6 +40,7 @@ const rows: ClassifiedUser[] = [
     lastActiveDate: "2026-07-01",
     activeDays30: 0,
     chats30: 0,
+    chats90: 1,
   }),
   user({
     id: "c",
@@ -50,6 +52,7 @@ const rows: ClassifiedUser[] = [
     lastActiveDate: "2026-08-18",
     activeDays30: 2,
     chats30: 4,
+    chats90: 9,
     agents30: 2,
     agentIds30: ["x", "y"],
   }),
@@ -85,6 +88,15 @@ describe("sortUsers", () => {
       "b",
     ]);
   });
+
+  it("sorts by chats in last 90 days", () => {
+    expect(
+      sortUsers(rows, { key: "chats90", direction: "desc" }).map((row) => row.id),
+    ).toEqual(["a", "c", "b"]);
+    expect(
+      sortUsers(rows, { key: "chats90", direction: "asc" }).map((row) => row.id),
+    ).toEqual(["b", "c", "a"]);
+  });
 });
 
 describe("nextUserSort", () => {
@@ -97,10 +109,22 @@ describe("nextUserSort", () => {
 });
 
 describe("snapshotMissingChatCounts", () => {
-  it("is true only when every saved user is missing chats30", () => {
+  it("is false when every user already has both chat counts", () => {
     expect(snapshotMissingChatCounts(rows)).toBe(false);
+  });
+
+  it("is true when every user is missing chats30 or chats90", () => {
     expect(
       snapshotMissingChatCounts(rows.map(({ chats30: _chats, ...user }) => user)),
     ).toBe(true);
+    expect(
+      snapshotMissingChatCounts(rows.map(({ chats90: _chats, ...user }) => user)),
+    ).toBe(true);
+  });
+
+  it("is false when only some users are missing a chat count", () => {
+    const [first, ...rest] = rows;
+    const { chats90: _chats, ...withoutChats90 } = first;
+    expect(snapshotMissingChatCounts([withoutChats90, ...rest])).toBe(false);
   });
 });
