@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeUserCount,
   addUtcDays,
   calendarDateUTC,
   classifyEngagement,
+  conversionRate,
   convertedCount,
   emptyCounts,
   tally,
+  totalFromCounts,
   trailingWindowStart,
 } from "./lifecycle";
 
@@ -133,5 +136,51 @@ describe("convertedCount", () => {
     counts.advanced = 2;
     counts.passive = 36;
     expect(convertedCount(counts)).toBe(7);
+  });
+});
+
+describe("activeUserCount", () => {
+  it("adds active (passive key), sticky, and advanced", () => {
+    const counts = emptyCounts();
+    counts.passive = 36;
+    counts.sticky = 5;
+    counts.advanced = 2;
+    counts.lapsed = 12;
+    expect(activeUserCount(counts)).toBe(43);
+  });
+});
+
+describe("totalFromCounts", () => {
+  it("sums every bucket", () => {
+    const counts = emptyCounts();
+    counts.non_user = 625;
+    counts.churned = 4;
+    counts.lapsed = 12;
+    counts.passive = 5;
+    counts.sticky = 3;
+    expect(totalFromCounts(counts)).toBe(649);
+  });
+});
+
+describe("conversionRate", () => {
+  it("divides converted by all users excluding non-users", () => {
+    const counts = emptyCounts();
+    counts.non_user = 625;
+    counts.churned = 4;
+    counts.lapsed = 12;
+    counts.passive = 5;
+    counts.sticky = 2;
+    counts.advanced = 1;
+    expect(conversionRate(counts)).toBeCloseTo((3 / 24) * 100, 5);
+  });
+
+  it("is null when there are no engaged users", () => {
+    const counts = emptyCounts();
+    counts.non_user = 10;
+    expect(conversionRate(counts)).toBeNull();
+  });
+
+  it("is null on a fully empty snapshot", () => {
+    expect(conversionRate(emptyCounts())).toBeNull();
   });
 });

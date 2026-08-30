@@ -10,12 +10,14 @@ export const ENGAGEMENT_TYPES = [
 
 export type EngagementType = (typeof ENGAGEMENT_TYPES)[number];
 
+// Display labels are user-facing naming; the `lapsed`/`passive` keys stay as-is
+// everywhere else (filters, sort order, tone maps) to avoid a wider rename.
 export const ENGAGEMENT_LABELS: Record<EngagementType, string> = {
   non_user: "Non-User",
   intro: "Intro",
   churned: "Churned",
-  lapsed: "Lapsed",
-  passive: "Passive",
+  lapsed: "Passive",
+  passive: "Active",
   sticky: "Sticky",
   advanced: "Advanced",
 };
@@ -215,4 +217,18 @@ export function tally(
 
 export function convertedCount(counts: Record<EngagementType, number>): number {
   return counts.sticky + counts.advanced;
+}
+
+export function activeUserCount(counts: Record<EngagementType, number>): number {
+  return counts.passive + counts.sticky + counts.advanced;
+}
+
+export function totalFromCounts(counts: Record<EngagementType, number>): number {
+  return Object.values(counts).reduce((sum, value) => sum + value, 0);
+}
+
+export function conversionRate(counts: Record<EngagementType, number>): number | null {
+  const engaged = totalFromCounts(counts) - counts.non_user;
+  if (engaged <= 0) return null;
+  return (convertedCount(counts) / engaged) * 100;
 }
