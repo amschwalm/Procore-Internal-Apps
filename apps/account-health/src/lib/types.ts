@@ -70,6 +70,8 @@ export type ClassifiedUser = {
   agentIds30: string[];
   chats30?: number;
   chats90?: number;
+  conversionEntryDate?: string | null;
+  daysToConversion?: number | null;
 };
 
 export type SyncStepLevel = "info" | "error";

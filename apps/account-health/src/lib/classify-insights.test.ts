@@ -46,6 +46,13 @@ describe("snapshotFromInsights", () => {
       advanced: 0,
     });
     expect(snapshot.attributionNote).toContain("more than 100");
+
+    const stickyUser = snapshot.users.find((user) => user.email === "stick@acme.test");
+    expect(stickyUser?.conversionEntryDate).toBe("2026-08-10");
+    expect(stickyUser?.daysToConversion).toBe(70);
+
+    const passiveUser = snapshot.users.find((user) => user.email === "pass@acme.test");
+    expect(passiveUser?.daysToConversion).toBeNull();
   });
 
   it("advanced when a person has more than 100 Q&A rows in 30 days", () => {
@@ -58,6 +65,8 @@ describe("snapshotFromInsights", () => {
     expect(snapshot.counts.advanced).toBe(1);
     expect(snapshot.users[0]?.chats30).toBe(101);
     expect(snapshot.users[0]?.chats90).toBe(101);
+    expect(snapshot.users[0]?.conversionEntryDate).toBe("2026-08-05");
+    expect(snapshot.users[0]?.daysToConversion).toBe(65);
   });
 
   it("marks directory people who are missing from the file as Non-User", () => {
@@ -98,5 +107,6 @@ describe("Grunley insights export", () => {
     expect(sticky.every((user) => (user.chats30 ?? 0) >= user.activeDays30)).toBe(true);
     expect(Math.max(...sticky.map((user) => user.chats30 ?? 0))).toBeGreaterThan(0);
     expect(sticky.every((user) => (user.chats90 ?? 0) >= (user.chats30 ?? 0))).toBe(true);
+    expect(sticky.every((user) => user.daysToConversion !== null)).toBe(true);
   });
 });

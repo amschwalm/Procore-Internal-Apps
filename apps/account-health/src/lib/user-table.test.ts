@@ -30,6 +30,7 @@ const rows: ClassifiedUser[] = [
     chats30: 12,
     chats90: 20,
     agents30: 1,
+    daysToConversion: 19,
   }),
   user({
     id: "b",
@@ -41,6 +42,7 @@ const rows: ClassifiedUser[] = [
     activeDays30: 0,
     chats30: 0,
     chats90: 1,
+    daysToConversion: null,
   }),
   user({
     id: "c",
@@ -55,6 +57,7 @@ const rows: ClassifiedUser[] = [
     chats90: 9,
     agents30: 2,
     agentIds30: ["x", "y"],
+    daysToConversion: 5,
   }),
 ];
 
@@ -96,6 +99,15 @@ describe("sortUsers", () => {
     expect(
       sortUsers(rows, { key: "chats90", direction: "asc" }).map((row) => row.id),
     ).toEqual(["b", "c", "a"]);
+  });
+
+  it("sorts by days to conversion, with never-converted users first ascending", () => {
+    expect(
+      sortUsers(rows, { key: "conversion", direction: "asc" }).map((row) => row.id),
+    ).toEqual(["b", "c", "a"]);
+    expect(
+      sortUsers(rows, { key: "conversion", direction: "desc" }).map((row) => row.id),
+    ).toEqual(["a", "c", "b"]);
   });
 });
 

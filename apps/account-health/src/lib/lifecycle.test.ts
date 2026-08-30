@@ -7,6 +7,8 @@ import {
   conversionRate,
   convertedCount,
   emptyCounts,
+  findConversionEntryDate,
+  summarizeConversionTiming,
   tally,
   totalFromCounts,
   trailingWindowStart,
@@ -16,6 +18,10 @@ const now = new Date("2026-08-30T15:00:00.000Z");
 
 function conv(daysAgo: number, agentIds: string[] = ["agent-a"]) {
   return { createdAt: addUtcDays(now, -daysAgo), agentIds };
+}
+
+function daysAgoDate(daysAgo: number): string {
+  return calendarDateUTC(addUtcDays(now, -daysAgo));
 }
 
 describe("trailingWindowStart", () => {
@@ -70,6 +76,23 @@ describe("classifyEngagement", () => {
     expect(result.chats30).toBe(5);
     expect(result.chats90).toBe(5);
     expect(result.type).toBe("sticky");
+    expect(result.conversionEntryDate).toBe(result.lastActiveDate);
+    expect(result.daysToConversion).toBe(7);
+  });
+
+  it("keeps daysToConversion after later going lapsed — it is a one-time milestone", () => {
+    const conversations = [conv(60), conv(59), conv(58), conv(57), conv(56)];
+    const result = classifyEngagement(conversations, now);
+    expect(result.activeDays30).toBe(0);
+    expect(result.type).toBe("lapsed");
+    expect(result.conversionEntryDate).toBe(daysAgoDate(56));
+    expect(result.daysToConversion).toBe(4);
+  });
+
+  it("has no conversion entry when fewer than 5 active days ever occur", () => {
+    const result = classifyEngagement([conv(20), conv(3)], now);
+    expect(result.conversionEntryDate).toBeNull();
+    expect(result.daysToConversion).toBeNull();
   });
 
   it("chats90 counts chats outside the 30-day window but inside 90", () => {
@@ -113,6 +136,72 @@ describe("classifyEngagement", () => {
     const at101 = [...at100, conv(1)];
     expect(classifyEngagement(at100, now).type).toBe("sticky");
     expect(classifyEngagement(at101, now).type).toBe("advanced");
+  });
+});
+
+describe("findConversionEntryDate", () => {
+  it("returns the 5th active day when all 5 fall in one 30-day window", () => {
+    const dates = ["2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05"];
+    expect(findConversionEntryDate(dates)).toBe("2026-01-05");
+  });
+
+  it("returns null when fewer than 5 active days ever occur", () => {
+    expect(findConversionEntryDate(["2026-01-01", "2026-02-01", "2026-03-01"])).toBeNull();
+  });
+
+  it("returns null when 5 active days exist but never within the same 30-day window", () => {
+    const dates = ["2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04", "2026-03-10"];
+    expect(findConversionEntryDate(dates)).toBeNull();
+  });
+
+  it("drops early days that fall outside the trailing window as it slides forward", () => {
+    // A lone day in January is more than 30 days from the February cluster,
+    // so only the 5-day run in February (Feb 10-14) should count.
+    const dates = [
+      "2026-01-01",
+      "2026-02-10",
+      "2026-02-11",
+      "2026-02-12",
+      "2026-02-13",
+      "2026-02-14",
+    ];
+    expect(findConversionEntryDate(dates)).toBe("2026-02-14");
+  });
+});
+
+describe("summarizeConversionTiming", () => {
+  it("computes the median and per-window eligibility/conversion rates", () => {
+    const users = [
+      { introDate: daysAgoDate(90), daysToConversion: 10 },
+      { introDate: daysAgoDate(61), daysToConversion: 45 },
+      { introDate: daysAgoDate(5), daysToConversion: null },
+      { introDate: daysAgoDate(200), daysToConversion: null },
+    ];
+    const summary = summarizeConversionTiming(users, now);
+
+    expect(summary.convertedCount).toBe(2);
+    expect(summary.medianDays).toBe(27.5);
+    expect(summary.windows[30]).toEqual({ eligible: 3, converted: 1, rate: (1 / 3) * 100 });
+    expect(summary.windows[60]).toEqual({ eligible: 3, converted: 2, rate: (2 / 3) * 100 });
+    expect(summary.windows[90]).toEqual({ eligible: 2, converted: 1, rate: 50 });
+  });
+
+  it("returns null median and rates when nobody is eligible or converted", () => {
+    const summary = summarizeConversionTiming(
+      [{ introDate: daysAgoDate(5), daysToConversion: null }],
+      now,
+    );
+    expect(summary.convertedCount).toBe(0);
+    expect(summary.medianDays).toBeNull();
+    expect(summary.windows[30]).toEqual({ eligible: 0, converted: 0, rate: null });
+  });
+
+  it("ignores users without an intro date for eligibility windows", () => {
+    const summary = summarizeConversionTiming(
+      [{ introDate: null, daysToConversion: null }],
+      now,
+    );
+    expect(summary.windows[30]).toEqual({ eligible: 0, converted: 0, rate: null });
   });
 });
 

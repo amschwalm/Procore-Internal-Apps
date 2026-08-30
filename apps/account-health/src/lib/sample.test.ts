@@ -22,5 +22,11 @@ describe("buildSampleSnapshot", () => {
     expect(sticky?.lastActiveDate).toBeTruthy();
     expect(sticky?.activeDates30.length).toBeGreaterThanOrEqual(5);
     expect(snapshot.users.every((user) => (user.chats90 ?? 0) >= (user.chats30 ?? 0))).toBe(true);
+
+    const convertedUsers = snapshot.users.filter(
+      (user) => user.type === "sticky" || user.type === "advanced",
+    );
+    expect(convertedUsers.length).toBeGreaterThan(0);
+    expect(convertedUsers.every((user) => user.daysToConversion !== null)).toBe(true);
   });
 });

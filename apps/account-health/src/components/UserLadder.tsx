@@ -12,6 +12,8 @@ import {
   ENGAGEMENT_TYPES,
   HEALTH_TONE_INK,
   HEALTH_TONES,
+  summarizeConversionTiming,
+  type ConversionTimingSummary,
   type EngagementType,
 } from "@/lib/lifecycle";
 import type { ClassifiedUser, MetricsSnapshot } from "@/lib/types";
@@ -52,6 +54,14 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
   const stickyUsers = convertedCount(snapshot.counts);
   const percentConverted = conversionRate(snapshot.counts);
   const chatsMissing = snapshotMissingChatCounts(snapshot.users);
+  const conversionTiming = useMemo(
+    () =>
+      summarizeConversionTiming(
+        snapshot.users,
+        snapshot.computedAt ? new Date(snapshot.computedAt) : new Date(),
+      ),
+    [snapshot.users, snapshot.computedAt],
+  );
 
   const visibleUsers = useMemo(() => {
     const filtered = filterUsers(snapshot.users, { query, stage: selected });
@@ -84,6 +94,7 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
           activeUsers={activeUsers}
           stickyUsers={stickyUsers}
           percentConverted={percentConverted}
+          conversionTiming={conversionTiming}
         />
 
         <StackedBar
@@ -172,11 +183,21 @@ function MetricsRow({
   activeUsers,
   stickyUsers,
   percentConverted,
+  conversionTiming,
 }: {
   activeUsers: number;
   stickyUsers: number;
   percentConverted: number | null;
+  conversionTiming: ConversionTimingSummary;
 }) {
+  const day30 = conversionTiming.windows[30];
+  const conversionHint =
+    conversionTiming.convertedCount === 0
+      ? "No one has entered Sticky or Advanced yet"
+      : `Median across ${conversionTiming.convertedCount} converted${
+          day30.eligible > 0 ? ` · ${day30.rate?.toFixed(0)}% by day 30` : ""
+        }`;
+
   return (
     <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <MetricTile
@@ -196,9 +217,8 @@ function MetricsRow({
       />
       <MetricTile
         label="Time to conversion"
-        value="—"
-        hint="Proposed: median days from Intro to first Sticky/Advanced day"
-        proposed
+        value={conversionTiming.medianDays === null ? "—" : `${conversionTiming.medianDays}d`}
+        hint={conversionHint}
       />
     </div>
   );
@@ -208,34 +228,15 @@ function MetricTile({
   label,
   value,
   hint,
-  proposed,
 }: {
   label: string;
   value: number | string;
   hint: string;
-  proposed?: boolean;
 }) {
   return (
-    <div
-      className={`relative rounded-xl border px-4 py-3 ${
-        proposed
-          ? "border-dashed border-pc-orange/30 bg-transparent"
-          : "border-white/10 bg-black/40"
-      }`}
-    >
-      {proposed ? (
-        <span className="absolute right-3 top-3 rounded-full border border-pc-orange/40 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em] text-pc-orange/80">
-          Proposed
-        </span>
-      ) : null}
+    <div className="rounded-xl border border-white/10 bg-black/40 px-4 py-3">
       <div className="text-[11px] uppercase tracking-[0.16em] text-pc-orange">{label}</div>
-      <div
-        className={`mt-1.5 font-mono text-2xl tabular-nums ${
-          proposed ? "text-white/35" : "text-white"
-        }`}
-      >
-        {value}
-      </div>
+      <div className="mt-1.5 font-mono text-2xl tabular-nums text-white">{value}</div>
       <div className="mt-1 text-[11px] leading-snug text-white/45">{hint}</div>
     </div>
   );
@@ -380,13 +381,14 @@ function UserTable({
               <SortHeader label="Last active" column="lastActive" sort={sort} onSort={onSort} className="px-3 py-3" />
               <SortHeader label="Days in last 30" column="days" sort={sort} onSort={onSort} className="px-3 py-3" />
               <SortHeader label="Chats in last 30" column="chats" sort={sort} onSort={onSort} className="px-3 py-3" />
-              <SortHeader label="Chats in last 90" column="chats90" sort={sort} onSort={onSort} className="px-6 py-3" />
+              <SortHeader label="Chats in last 90" column="chats90" sort={sort} onSort={onSort} className="px-3 py-3" />
+              <SortHeader label="Days to conversion" column="conversion" sort={sort} onSort={onSort} className="px-6 py-3" />
             </tr>
           </thead>
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-6 py-10 text-center text-sm text-white/45">
+                <td colSpan={9} className="px-6 py-10 text-center text-sm text-white/45">
                   No users in this view.
                 </td>
               </tr>
@@ -435,8 +437,11 @@ function UserTable({
                     <td className="px-3 py-3 font-mono text-xs text-white">
                       {user.chats30 ?? "—"}
                     </td>
-                    <td className="px-6 py-3 font-mono text-xs text-white">
+                    <td className="px-3 py-3 font-mono text-xs text-white">
                       {user.chats90 ?? "—"}
+                    </td>
+                    <td className="px-6 py-3 font-mono text-xs text-white" title={user.conversionEntryDate ? `Entered on ${formatDay(user.conversionEntryDate)}` : undefined}>
+                      {user.daysToConversion ?? "—"}
                     </td>
                   </tr>
                 );

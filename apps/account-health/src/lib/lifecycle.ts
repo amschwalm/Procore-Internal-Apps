@@ -52,6 +52,8 @@ export type Classification = {
   agentIds30: string[];
   chats30: number;
   chats90: number;
+  conversionEntryDate: string | null;
+  daysToConversion: number | null;
 };
 
 export const ENGAGEMENT_TONES: Record<EngagementType, string> = {
@@ -108,11 +110,17 @@ export function emptyClassification(): Classification {
     agentIds30: [],
     chats30: 0,
     chats90: 0,
+    conversionEntryDate: null,
+    daysToConversion: null,
   };
 }
 
 export function calendarDateUTC(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+export function dateFromCalendar(value: string): Date {
+  return new Date(`${value}T00:00:00.000Z`);
 }
 
 export function addUtcDays(date: Date, days: number): Date {
@@ -121,12 +129,36 @@ export function addUtcDays(date: Date, days: number): Date {
   return next;
 }
 
+export function daysBetweenCalendar(a: string, b: string): number {
+  const ms = dateFromCalendar(b).getTime() - dateFromCalendar(a).getTime();
+  return Math.round(ms / 86_400_000);
+}
+
 export function trailingWindowStart(now: Date, days = 30): Date {
   const start = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
   );
   start.setUTCDate(start.getUTCDate() - (days - 1));
   return start;
+}
+
+const CONVERSION_ACTIVE_DAYS = 5;
+const CONVERSION_WINDOW_DAYS = 30;
+
+// Walks a person's full (all-time) active dates with a sliding two-pointer
+// window to find the first date whose trailing 30-day window already has
+// >=5 active days — the same gate that produces Sticky/Advanced, evaluated
+// historically instead of only at "now".
+export function findConversionEntryDate(activeDates: string[]): string | null {
+  let start = 0;
+  for (let i = 0; i < activeDates.length; i += 1) {
+    const windowStart = calendarDateUTC(
+      addUtcDays(dateFromCalendar(activeDates[i]), -(CONVERSION_WINDOW_DAYS - 1)),
+    );
+    while (activeDates[start] < windowStart) start += 1;
+    if (i - start + 1 >= CONVERSION_ACTIVE_DAYS) return activeDates[i];
+  }
+  return null;
 }
 
 export function classifyEngagement(
@@ -146,6 +178,12 @@ export function classifyEngagement(
   const firstReturnDate = dates.find((date) => date !== introDate) ?? null;
   const lastActiveDate = dates[dates.length - 1];
   const returned = firstReturnDate !== null;
+
+  const allActiveDates = [...new Set(dates)];
+  const conversionEntryDate = findConversionEntryDate(allActiveDates);
+  const daysToConversion = conversionEntryDate
+    ? daysBetweenCalendar(introDate, conversionEntryDate)
+    : null;
 
   const windowStart = trailingWindowStart(now);
   const recent = sorted.filter((c) => c.createdAt >= windowStart && c.createdAt <= now);
@@ -188,6 +226,8 @@ export function classifyEngagement(
     agentIds30,
     chats30,
     chats90,
+    conversionEntryDate,
+    daysToConversion,
   };
 }
 
@@ -231,4 +271,76 @@ export function conversionRate(counts: Record<EngagementType, number>): number |
   const engaged = totalFromCounts(counts) - counts.non_user;
   if (engaged <= 0) return null;
   return (convertedCount(counts) / engaged) * 100;
+}
+
+export type ConversionTimingUser = {
+  introDate: string | null;
+  daysToConversion?: number | null;
+};
+
+export type ConversionTimingWindow = {
+  eligible: number;
+  converted: number;
+  rate: number | null;
+};
+
+export type ConversionTimingSummary = {
+  convertedCount: number;
+  medianDays: number | null;
+  windows: Record<30 | 60 | 90, ConversionTimingWindow>;
+};
+
+function median(sortedValues: number[]): number | null {
+  if (sortedValues.length === 0) return null;
+  const mid = Math.floor(sortedValues.length / 2);
+  return sortedValues.length % 2 === 0
+    ? (sortedValues[mid - 1] + sortedValues[mid]) / 2
+    : sortedValues[mid];
+}
+
+// Median only covers people who have converted. The day-30/60/90 windows add
+// a censoring-aware view: among people old enough (intro at least N days
+// ago) to have had a fair shot, what share converted within N days.
+export function summarizeConversionTiming(
+  users: ConversionTimingUser[],
+  now: Date,
+): ConversionTimingSummary {
+  const today = calendarDateUTC(now);
+  const durations = users
+    .map((user) => user.daysToConversion)
+    .filter((value): value is number => value != null)
+    .sort((a, b) => a - b);
+
+  const windowDays = [30, 60, 90] as const;
+  const eligible: Record<30 | 60 | 90, number> = { 30: 0, 60: 0, 90: 0 };
+  const converted: Record<30 | 60 | 90, number> = { 30: 0, 60: 0, 90: 0 };
+
+  for (const user of users) {
+    if (!user.introDate) continue;
+    const daysSinceIntro = daysBetweenCalendar(user.introDate, today);
+    for (const days of windowDays) {
+      if (daysSinceIntro < days) continue;
+      eligible[days] += 1;
+      if (user.daysToConversion != null && user.daysToConversion <= days) {
+        converted[days] += 1;
+      }
+    }
+  }
+
+  const windows = Object.fromEntries(
+    windowDays.map((days) => [
+      days,
+      {
+        eligible: eligible[days],
+        converted: converted[days],
+        rate: eligible[days] > 0 ? (converted[days] / eligible[days]) * 100 : null,
+      },
+    ]),
+  ) as Record<30 | 60 | 90, ConversionTimingWindow>;
+
+  return {
+    convertedCount: durations.length,
+    medianDays: median(durations),
+    windows,
+  };
 }
