@@ -45,7 +45,18 @@ describe("snapshotFromInsights", () => {
       sticky: 1,
       advanced: 0,
     });
-    expect(snapshot.attributionNote).toContain("no agent column");
+    expect(snapshot.attributionNote).toContain("more than 100");
+  });
+
+  it("advanced when a person has more than 100 Q&A rows in 30 days", () => {
+    const rows = [HEADER, row("power@acme.test", "2026-06-01T10:00:00")];
+    for (let i = 0; i < 101; i += 1) {
+      const day = 1 + (i % 6);
+      rows.push(row("power@acme.test", `2026-08-0${day}T10:00:00`));
+    }
+    const snapshot = snapshotFromInsights(parseInsightsTable(tableFromCsv(rows.join("\n"))), { now });
+    expect(snapshot.counts.advanced).toBe(1);
+    expect(snapshot.users[0]?.chats30).toBe(101);
   });
 
   it("marks directory people who are missing from the file as Non-User", () => {

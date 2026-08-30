@@ -109,15 +109,7 @@ const SPECS: Spec[] = [
   ...Array.from({ length: 5 }, (_, i) => ({
     id: `adv-${i}`,
     type: "advanced" as const,
-    daysAgo: [16, 8, 5, 3, 2, 1],
-    agents: [
-      ["Research Agent"],
-      ["Research Agent"],
-      ["Weekly Log"],
-      ["Research Agent"],
-      ["Weekly Log"],
-      ["Research Agent"],
-    ],
+    daysAgo: Array.from({ length: 101 }, (_, chat) => [16, 8, 5, 3, 2, 1][chat % 6]!),
     power: true,
   })),
 ];
@@ -147,6 +139,7 @@ export function buildSampleSnapshot(computedAt = now): MetricsSnapshot {
       activeDates30: result.activeDates30,
       agents30: result.agents30,
       agentIds30: result.agentIds30,
+      chats30: result.chats30,
     };
   });
 

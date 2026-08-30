@@ -68,6 +68,7 @@ export type ClassifiedUser = {
   activeDates30: string[];
   agents30: number;
   agentIds30: string[];
+  chats30?: number;
 };
 
 export type SyncStepLevel = "info" | "error";

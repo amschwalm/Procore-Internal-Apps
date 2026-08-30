@@ -44,6 +44,7 @@ export function snapshotFromInsights(
         activeDates30: result.activeDates30,
         agents30: result.agents30,
         agentIds30: result.agentIds30,
+        chats30: result.chats30,
       };
     });
 
@@ -51,9 +52,8 @@ export function snapshotFromInsights(
   const peopleInFile = byEmail.size;
   const joined = directory.length > 0;
   const fileLabel = options.fileName ? `“${options.fileName}”` : "the uploaded export";
-  const agentNote = parsed.hasAgentColumn
-    ? ""
-    : " This export has no agent column, so people with ≥5 active days are Sticky rather than Advanced.";
+  const advancedNote =
+    " Advanced is more than 100 completed Q&As in the trailing 30 days; everyone else with ≥5 active days is Sticky.";
 
   const joinNote = joined
     ? ` Joined to ${directory.length} provisioned Datagrid users. People in the directory who never appear in the export are Non-Users.`
@@ -63,7 +63,7 @@ export function snapshotFromInsights(
     source: "upload",
     computedAt: now.toISOString(),
     attribution: "user",
-    attributionNote: `Classified ${peopleInFile} ${peopleInFile === 1 ? "person" : "people"} from ${fileLabel} (${parsed.events.length} completed Q&A rows).${joinNote}${agentNote}`,
+    attributionNote: `Classified ${peopleInFile} ${peopleInFile === 1 ? "person" : "people"} from ${fileLabel} (${parsed.events.length} completed Q&A rows).${joinNote}${advancedNote}`,
     provisionedUsers: users.length,
     counts,
     powerCount,

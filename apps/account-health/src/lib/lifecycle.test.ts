@@ -54,23 +54,41 @@ describe("classifyEngagement", () => {
     ).toBe("passive");
   });
 
-  it("sticky: 5+ days, one agent (day 5 counts)", () => {
+  it("sticky: 5+ days, 100 or fewer chats in trailing 30", () => {
     const conversations = [conv(8), conv(6), conv(4), conv(2), conv(1)];
     const result = classifyEngagement(conversations, now);
     expect(result.activeDays30).toBe(5);
+    expect(result.chats30).toBe(5);
     expect(result.type).toBe("sticky");
   });
 
-  it("advanced: 5+ days, two or more agents", () => {
+  it("sticky even with two agents if chats stay at or under 100", () => {
     const conversations = [
       conv(8, ["a"]),
       conv(6, ["a"]),
       conv(4, ["b"]),
       conv(2, ["a"]),
       conv(1, ["b"]),
-      conv(20, ["a"]),
     ];
-    expect(classifyEngagement(conversations, now).type).toBe("advanced");
+    expect(classifyEngagement(conversations, now).type).toBe("sticky");
+  });
+
+  it("advanced: 5+ days and more than 100 chats in trailing 30", () => {
+    const conversations = Array.from({ length: 101 }, (_, i) =>
+      conv([8, 6, 4, 2, 1][i % 5]!),
+    );
+    const result = classifyEngagement(conversations, now);
+    expect(result.activeDays30).toBe(5);
+    expect(result.chats30).toBe(101);
+    expect(result.type).toBe("advanced");
+  });
+
+  it("100 chats with 5+ days stays sticky; 101 becomes advanced", () => {
+    const days = [8, 6, 4, 2, 1];
+    const at100 = Array.from({ length: 100 }, (_, i) => conv(days[i % 5]!));
+    const at101 = [...at100, conv(1)];
+    expect(classifyEngagement(at100, now).type).toBe("sticky");
+    expect(classifyEngagement(at101, now).type).toBe("advanced");
   });
 });
 

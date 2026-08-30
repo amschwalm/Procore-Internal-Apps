@@ -18,6 +18,7 @@ Later layers (HubSpot, Salesforce, Gong, Avoma) are parked at the end. They are 
 | TTV event timestamps | **`created_at` only.** A value event is when the object first existed, not when it was last touched. Do not wait on the P7 inspection to compute TTV. |
 | Value model | **User lifecycle types** (Non-User → Power / Churned / Lapsed), not the old T1–T6 event ladder. See [§8](#8-user-lifecycle). |
 | Sticky / Passive threshold | **≥5** distinct active calendar days in the trailing 30 days = Sticky or Advanced. **1–4** = Passive. Exactly 5 is Sticky/Advanced (the original “>5” / “<5” left 5 unassigned). |
+| Sticky vs Advanced | Anyone with ≥5 active days is **exactly one** of Sticky or Advanced. **Advanced** = more than **100** completed chats in the trailing 30 days. **Sticky** = 100 or fewer. Agent count is not the split. |
 | Power User | **Overlay flag**, not a mutually exclusive rung. A user can be Passive and a builder. |
 
 ---
@@ -260,8 +261,8 @@ Evaluate **in order**. First match wins. Every provisioned user matches exactly 
 | U3 | **Churned User** | Intro date is before today, and they have **never** returned | Did not come back after introduction |
 | U4 | **Lapsed User** | Has returned, and active days (30) = **0** | Came back after intro, then went quiet. **Added so the set is closed.** |
 | U5 | **Passive User** | Has returned, and active days (30) is **1–4** | Comes back, but under 5 days / 30 |
-| U6 | **Sticky User** | Has returned, active days (30) **≥ 5**, and agents (30) **= 1** | ≥5 days / 30, one agent |
-| U7 | **Advanced User** | Has returned, active days (30) **≥ 5**, and agents (30) **≥ 2** | ≥5 days / 30, various agents |
+| U6 | **Sticky User** | Has returned, active days (30) **≥ 5**, and chats (30) **≤ 100** | ≥5 days / 30, 100 or fewer chats |
+| U7 | **Advanced User** | Has returned, active days (30) **≥ 5**, and chats (30) **> 100** | ≥5 days / 30, more than 100 chats |
 
 **Basic User** is not a current type. It is the lifetime milestone `returned = true` (first completed conversation on a date ≠ intro date). U4–U7 all have it. Time-to-Basic is still a TTV metric ([§8.7](#87-time-to-stage)).
 
@@ -270,7 +271,7 @@ Proof the seven types partition provisioned users:
 1. Never completed → U1.
 2. Completed, intro is today → U2 (a later calendar day cannot exist yet).
 3. Completed, intro in the past, never a later-day conversation → U3.
-4. Returned, then split only on trailing-30 activity: 0 → U4; 1–4 → U5; ≥5 and one agent → U6; ≥5 and ≥2 agents → U7.
+4. Returned, then split only on trailing-30 activity: 0 → U4; 1–4 → U5; ≥5 and ≤100 chats → U6; ≥5 and >100 chats → U7.
 
 No other cases. No overlaps.
 
@@ -311,7 +312,7 @@ If a single label is required for a chart, use this override **after** U1–U7 (
                                     ┌─────┴─────┐
                                     ▼           ▼
                                  U6 Sticky   U7 Advanced
-                                 (1 agent)   (≥2 agents)
+                                 (≤100 chats) (>100 chats)
 
 U8 Power can sit on any node.
 ```
@@ -337,8 +338,8 @@ Account-as-actor (computable v0):
 | Churned | First completed date is before today, and no completed conversation on any later date |
 | Lapsed | At least one later-date conversation exists, and 0 active days in trailing 30 |
 | Passive | Returned, 1–4 active days in trailing 30 |
-| Sticky | Returned, ≥5 active days, exactly one agent used in trailing 30 |
-| Advanced | Returned, ≥5 active days, ≥2 agents used in trailing 30 |
+| Sticky | Returned, ≥5 active days, ≤100 completed chats in trailing 30 |
+| Advanced | Returned, ≥5 active days, >100 completed chats in trailing 30 |
 | Power (flag) | ≥1 agent with `managed_by_app` null, or qualifying knowledge, or connection |
 
 This answers “is the account in use / sticky / building?” It does **not** answer “how many people are sticky?” Until an author field exists, do not report person-level mix.
@@ -355,7 +356,7 @@ Each milestone time is `first_entered_at − T0` in days. Use `created_at` of th
 | T-Intro | Intro | First completed conversation | Ready |
 | T-Basic | Basic | First completed conversation on a calendar date ≠ intro date | Ready |
 | T-Sticky | Sticky | First computation date (or first historical day) at which some trailing-30 window had ≥5 active days | Ready, heavier (need a daily activity series from conversation `created_at`) |
-| T-Advanced | Advanced | First time a trailing-30 window had ≥5 active days **and** ≥2 agents | Ready, same series |
+| T-Advanced | Advanced | First time a trailing-30 window had ≥5 active days **and** more than 100 chats | Ready, same series |
 | T-Power | Power | `min` of first user-created agent, first qualifying knowledge, first connection | Ready |
 | T-Churn | — | Not a goal. U3 is a current state, not a success time. | — |
 
