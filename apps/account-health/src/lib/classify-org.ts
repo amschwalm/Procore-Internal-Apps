@@ -22,13 +22,18 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
     org.knowledge.some(isQualifyingKnowledge) ||
     org.connections.length > 0;
 
+  const scopeNote =
+    org.keyScope === "org" && org.teamspaces.length > 1
+      ? `This key is org-scoped, so Datagrid ignored the teamspace header and we only synced the home teamspace (${org.teamspacesSynced} of ${org.teamspaces.length}). Mint an account-scoped key to read the other teamspaces. `
+      : "";
+
   if (!canAttribute) {
     return {
       source: "datagrid",
       computedAt: now.toISOString(),
       attribution: "unavailable",
       attributionNote:
-        "Datagrid conversations and messages did not include an author. Person-level stages cannot be assigned. The public API documents no user_id on chats. If your key returns extra fields, they will be picked up on the next sync.",
+        `${scopeNote}Datagrid conversations and messages did not include an author. Person-level stages cannot be assigned. The public API documents no user_id on chats. If your key returns extra fields, they will be picked up on the next sync.`.trim(),
       provisionedUsers: org.users.length,
       counts: {
         non_user: org.users.length,
@@ -55,6 +60,7 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
         activeDates30: [],
         agents30: 0,
         agentIds30: [],
+        chats30: 0,
       })),
     };
   }
@@ -84,6 +90,7 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
       activeDates30: result.activeDates30,
       agents30: result.agents30,
       agentIds30: result.agentIds30,
+      chats30: result.chats30,
     };
   });
 
@@ -92,7 +99,7 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
     source: "datagrid",
     computedAt: now.toISOString(),
     attribution: "user",
-    attributionNote: `Assigned stages using ${org.discoveredAuthorFields.join(", ")}.`,
+    attributionNote: `${scopeNote}Assigned stages using ${org.discoveredAuthorFields.join(", ")}.`.trim(),
     provisionedUsers: users.length,
     counts,
     powerCount,

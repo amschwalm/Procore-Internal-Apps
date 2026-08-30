@@ -49,6 +49,12 @@ export type Connections = {
   salesforce?: SalesforceConnection;
 };
 
+export type DirectoryUser = {
+  id: string;
+  email?: string;
+  name?: string;
+};
+
 export type ClassifiedUser = {
   id: string;
   email?: string;
@@ -62,10 +68,32 @@ export type ClassifiedUser = {
   activeDates30: string[];
   agents30: number;
   agentIds30: string[];
+  chats30?: number;
+};
+
+export type SyncStepLevel = "info" | "error";
+
+export type SyncStep = {
+  at: string;
+  level: SyncStepLevel;
+  step: string;
+  message: string;
+};
+
+export type SyncJobStatus = "idle" | "running" | "success" | "error";
+
+export type SyncJob = {
+  status: SyncJobStatus;
+  mode: "sample" | "datagrid" | "upload" | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  steps: SyncStep[];
+  error: string | null;
+  failedStep: string | null;
 };
 
 export type MetricsSnapshot = {
-  source: "sample" | "datagrid" | "none";
+  source: "sample" | "datagrid" | "upload" | "none";
   computedAt: string | null;
   attribution: "user" | "unavailable" | "sample";
   attributionNote: string | null;
@@ -75,6 +103,26 @@ export type MetricsSnapshot = {
   orgPower: boolean;
   discoveredAuthorFields: string[];
   users: ClassifiedUser[];
+};
+
+export type AccountRecord = {
+  id: string;
+  name: string;
+  createdAt: string;
+  connections: Connections;
+  snapshot: MetricsSnapshot;
+  job: SyncJob;
+  directory: DirectoryUser[];
+};
+
+export type PublicAccount = {
+  id: string;
+  name: string;
+  createdAt: string;
+  userCount: number;
+  source: MetricsSnapshot["source"];
+  computedAt: string | null;
+  current: boolean;
 };
 
 export type PublicSourceState = {

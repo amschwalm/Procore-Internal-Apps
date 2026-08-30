@@ -20,14 +20,16 @@ export const ENGAGEMENT_LABELS: Record<EngagementType, string> = {
   advanced: "Advanced",
 };
 
+export const ADVANCED_CHATS_30 = 100;
+
 export const ENGAGEMENT_HINTS: Record<EngagementType, string> = {
   non_user: "Never completed a Q&A",
   intro: "First completed Q&A is today",
   churned: "Introduced, never returned",
   lapsed: "Returned once, quiet for 30 days",
   passive: "1–4 active days in 30",
-  sticky: "≥5 days, one agent",
-  advanced: "≥5 days, two or more agents",
+  sticky: "≥5 days, ≤100 chats in 30",
+  advanced: "≥5 days, >100 chats in 30",
 };
 
 export type CompletedConversation = {
@@ -46,16 +48,47 @@ export type Classification = {
   activeDates30: string[];
   agents30: number;
   agentIds30: string[];
+  chats30: number;
 };
 
 export const ENGAGEMENT_TONES: Record<EngagementType, string> = {
-  non_user: "bg-zinc-700",
-  intro: "bg-zinc-200",
-  churned: "bg-zinc-800",
-  lapsed: "bg-zinc-600",
-  passive: "bg-zinc-500",
-  sticky: "bg-zinc-300",
-  advanced: "bg-zinc-100",
+  non_user: "bg-[#3d1400]",
+  intro: "bg-[#ffb089]",
+  churned: "bg-[#661f00]",
+  lapsed: "bg-[#992e00]",
+  passive: "bg-[#cc4200]",
+  sticky: "bg-[#ff5200]",
+  advanced: "bg-[#ffd4c2]",
+};
+
+export const ENGAGEMENT_TONE_INK: Record<EngagementType, string> = {
+  non_user: "text-white",
+  intro: "text-black",
+  churned: "text-white",
+  lapsed: "text-white",
+  passive: "text-white",
+  sticky: "text-white",
+  advanced: "text-black",
+};
+
+export const HEALTH_TONES: Record<EngagementType, string> = {
+  non_user: "bg-transparent",
+  intro: "bg-[#f5c518]",
+  churned: "bg-[#7f1d1d]",
+  lapsed: "bg-[#f08080]",
+  passive: "bg-[#86efac]",
+  sticky: "bg-[#22c55e]",
+  advanced: "bg-[#007a33]",
+};
+
+export const HEALTH_TONE_INK: Record<EngagementType, string> = {
+  non_user: "text-white/70",
+  intro: "text-black",
+  churned: "text-white",
+  lapsed: "text-black",
+  passive: "text-black",
+  sticky: "text-black",
+  advanced: "text-white",
 };
 
 export function emptyClassification(): Classification {
@@ -70,6 +103,7 @@ export function emptyClassification(): Classification {
     activeDates30: [],
     agents30: 0,
     agentIds30: [],
+    chats30: 0,
   };
 }
 
@@ -115,6 +149,7 @@ export function classifyEngagement(
   const activeDays30 = activeDates30.length;
   const agentIds30 = [...new Set(recent.flatMap((c) => c.agentIds))].sort();
   const agents30 = agentIds30.length;
+  const chats30 = recent.length;
 
   let type: EngagementType;
   if (introDate === today) {
@@ -125,7 +160,7 @@ export function classifyEngagement(
     type = "lapsed";
   } else if (activeDays30 <= 4) {
     type = "passive";
-  } else if (agents30 >= 2) {
+  } else if (chats30 > ADVANCED_CHATS_30) {
     type = "advanced";
   } else {
     type = "sticky";
@@ -142,6 +177,7 @@ export function classifyEngagement(
     activeDates30,
     agents30,
     agentIds30,
+    chats30,
   };
 }
 
@@ -167,4 +203,8 @@ export function tally(
     if (row.power) powerCount += 1;
   }
   return { counts, powerCount };
+}
+
+export function convertedCount(counts: Record<EngagementType, number>): number {
+  return counts.sticky + counts.advanced;
 }
