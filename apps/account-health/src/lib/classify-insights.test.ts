@@ -92,5 +92,9 @@ describe("Grunley insights export", () => {
       sticky: 3,
       advanced: 0,
     });
+    const sticky = snapshot.users.filter((user) => user.type === "sticky");
+    expect(sticky).toHaveLength(3);
+    expect(sticky.every((user) => (user.chats30 ?? 0) >= user.activeDays30)).toBe(true);
+    expect(Math.max(...sticky.map((user) => user.chats30 ?? 0))).toBeGreaterThan(0);
   });
 });

@@ -13,6 +13,14 @@ import {
   type EngagementType,
 } from "@/lib/lifecycle";
 import type { ClassifiedUser, MetricsSnapshot } from "@/lib/types";
+import {
+  filterUsers,
+  nextUserSort,
+  snapshotMissingChatCounts,
+  sortUsers,
+  type UserSort,
+  type UserSortKey,
+} from "@/lib/user-table";
 
 function formatDay(value: string | null): string {
   if (!value) return "—";
@@ -34,29 +42,17 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
   const [selected, setSelected] = useState<EngagementType | null>(null);
   const [hovered, setHovered] = useState<EngagementType | null>(null);
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<UserSort | null>(null);
 
   const active = selected ?? hovered;
   const total = snapshot.provisionedUsers;
   const converted = convertedCount(snapshot.counts);
-
-  const sortedUsers = useMemo(() => {
-    const order = new Map(ENGAGEMENT_TYPES.map((type, index) => [type, index]));
-    return [...snapshot.users].sort((a, b) => {
-      const typeDelta = (order.get(a.type) ?? 0) - (order.get(b.type) ?? 0);
-      if (typeDelta !== 0) return typeDelta;
-      return (a.name ?? a.email ?? a.id).localeCompare(b.name ?? b.email ?? b.id);
-    });
-  }, [snapshot.users]);
+  const chatsMissing = snapshotMissingChatCounts(snapshot.users);
 
   const visibleUsers = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return sortedUsers.filter((user) => {
-      if (selected && user.type !== selected) return false;
-      if (!needle) return true;
-      const haystack = `${user.name ?? ""} ${user.email ?? ""} ${user.id}`.toLowerCase();
-      return haystack.includes(needle);
-    });
-  }, [sortedUsers, selected, query]);
+    const filtered = filterUsers(snapshot.users, { query, stage: selected });
+    return sortUsers(filtered, sort);
+  }, [snapshot.users, query, selected, sort]);
 
   function toggle(type: EngagementType) {
     setSelected((current) => (current === type ? null : type));
@@ -69,8 +65,7 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
           <div>
             <h2 className="text-lg font-medium tracking-tight text-white">User types</h2>
             <p className="mt-1 max-w-2xl text-sm text-white/50">
-              Click a segment to filter the table. Dates are the completed Q&A days
-              that assigned the stage.
+              Click a segment or use the table filters. Click a column header to sort.
             </p>
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em] text-pc-orange">
@@ -131,15 +126,29 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
 
       <UserTable
         users={visibleUsers}
-        total={sortedUsers.length}
+        total={snapshot.users.length}
         selected={selected}
         active={active}
         query={query}
+        sort={sort}
         onQuery={setQuery}
+        onStage={(type) => setSelected(type)}
+        onSort={(key) => setSort((current) => nextUserSort(current, key))}
         onHoverType={setHovered}
-        onClear={() => setSelected(null)}
+        onClear={() => {
+          setSelected(null);
+          setQuery("");
+          setSort(null);
+        }}
       />
 
+      {chatsMissing ? (
+        <p className="border-t border-white/10 px-6 py-3 text-xs leading-relaxed text-pc-orange">
+          Chats in last 30 is empty because this snapshot was saved before chat
+          counts were stored. Upload the same insights Excel or CSV again — each
+          completed Q&A row in the trailing 30 days becomes that person’s count.
+        </p>
+      ) : null}
       {snapshot.attributionNote ? (
         <p className="border-t border-white/10 px-6 py-3 text-xs leading-relaxed text-white/45">
           {snapshot.attributionNote}
@@ -207,7 +216,10 @@ function UserTable({
   selected,
   active,
   query,
+  sort,
   onQuery,
+  onStage,
+  onSort,
   onHoverType,
   onClear,
 }: {
@@ -216,10 +228,14 @@ function UserTable({
   selected: EngagementType | null;
   active: EngagementType | null;
   query: string;
+  sort: UserSort | null;
   onQuery: (value: string) => void;
+  onStage: (type: EngagementType | null) => void;
+  onSort: (key: UserSortKey) => void;
   onHoverType: (type: EngagementType | null) => void;
   onClear: () => void;
 }) {
+  const filtered = Boolean(selected || query.trim() || sort);
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-3">
@@ -227,41 +243,61 @@ function UserTable({
           <span className="text-white">{users.length}</span>
           <span className="text-white/35"> / {total}</span>
           {selected ? (
-            <span className="ml-2 text-white/70">
-              {ENGAGEMENT_LABELS[selected]}
-              <button
-                type="button"
-                onClick={onClear}
-                className="ml-2 text-xs text-pc-orange underline-offset-2 hover:underline"
-              >
-                Clear
-              </button>
-            </span>
+            <span className="ml-2 text-white/70">{ENGAGEMENT_LABELS[selected]}</span>
           ) : (
             <span className="ml-2 text-white/35">all stages</span>
           )}
+          {filtered ? (
+            <button
+              type="button"
+              onClick={onClear}
+              className="ml-2 text-xs text-pc-orange underline-offset-2 hover:underline"
+            >
+              Clear
+            </button>
+          ) : null}
         </div>
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => onQuery(event.target.value)}
-          placeholder="Filter name or email"
-          className="w-56 rounded-md border border-white/15 bg-black px-3 py-1.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-pc-orange"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="sr-only" htmlFor="stage-filter">
+            Filter by stage
+          </label>
+          <select
+            id="stage-filter"
+            value={selected ?? ""}
+            onChange={(event) =>
+              onStage((event.target.value || null) as EngagementType | null)
+            }
+            className="rounded-md border border-white/15 bg-black px-3 py-1.5 text-sm text-white outline-none focus:border-pc-orange"
+          >
+            <option value="">All stages</option>
+            {ENGAGEMENT_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {ENGAGEMENT_LABELS[type]}
+              </option>
+            ))}
+          </select>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => onQuery(event.target.value)}
+            placeholder="Filter name, email, or stage"
+            className="w-56 rounded-md border border-white/15 bg-black px-3 py-1.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-pc-orange"
+          />
+        </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
           <thead className="text-[11px] uppercase tracking-[0.14em] text-pc-orange">
             <tr className="border-b border-white/10">
-              <th className="px-6 py-3 font-medium">User</th>
-              <th className="px-3 py-3 font-medium">Stage</th>
-              <th className="px-3 py-3 font-medium">Intro</th>
-              <th className="px-3 py-3 font-medium">First return</th>
-              <th className="px-3 py-3 font-medium">Last active</th>
-              <th className="px-3 py-3 font-medium">Days in last 30</th>
-              <th className="px-3 py-3 font-medium">Chats in last 30</th>
-              <th className="px-6 py-3 font-medium">Agents in last 30</th>
+              <SortHeader label="User" column="user" sort={sort} onSort={onSort} className="px-6 py-3" />
+              <SortHeader label="Stage" column="stage" sort={sort} onSort={onSort} className="px-3 py-3" />
+              <SortHeader label="Intro" column="intro" sort={sort} onSort={onSort} className="px-3 py-3" />
+              <SortHeader label="First return" column="firstReturn" sort={sort} onSort={onSort} className="px-3 py-3" />
+              <SortHeader label="Last active" column="lastActive" sort={sort} onSort={onSort} className="px-3 py-3" />
+              <SortHeader label="Days in last 30" column="days" sort={sort} onSort={onSort} className="px-3 py-3" />
+              <SortHeader label="Chats in last 30" column="chats" sort={sort} onSort={onSort} className="px-3 py-3" />
+              <SortHeader label="Agents in last 30" column="agents" sort={sort} onSort={onSort} className="px-6 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -327,5 +363,37 @@ function UserTable({
         </table>
       </div>
     </div>
+  );
+}
+
+function SortHeader({
+  label,
+  column,
+  sort,
+  onSort,
+  className,
+}: {
+  label: string;
+  column: UserSortKey;
+  sort: UserSort | null;
+  onSort: (key: UserSortKey) => void;
+  className: string;
+}) {
+  const active = sort?.key === column;
+  return (
+    <th className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`inline-flex items-center gap-1 font-medium uppercase tracking-[0.14em] transition-colors hover:text-white ${
+          active ? "text-white" : "text-pc-orange"
+        }`}
+      >
+        {label}
+        <span className="font-mono text-[10px] text-white/70">
+          {active && sort ? (sort.direction === "asc" ? "↑" : "↓") : "↕"}
+        </span>
+      </button>
+    </th>
   );
 }
