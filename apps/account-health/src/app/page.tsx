@@ -1,11 +1,13 @@
 import { AppShell } from "@/components/AppShell";
 import { OverviewActions } from "@/components/OverviewActions";
 import { UserLadder } from "@/components/UserLadder";
-import { emptyJob, readState } from "@/lib/store";
+import { emptyJob, publicAccounts, readState, readWorkspace } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
+  const workspace = await readWorkspace();
+  const accounts = publicAccounts(workspace);
   const state = await readState();
   const snapshot = state.snapshot;
   const sourceLabel =
@@ -18,28 +20,42 @@ export default async function OverviewPage() {
           : "No data";
 
   return (
-    <AppShell current="overview">
+    <AppShell current="overview" accounts={accounts}>
       <div className="mb-8 space-y-4">
         <div>
           <p className="text-[11px] uppercase tracking-[0.18em] text-pc-orange">Overview</p>
           <h1 className="mt-1 text-2xl font-medium tracking-tight text-white">
-            Account health
+            {state.accountName ?? "Account health"}
           </h1>
           <p className="mt-2 text-sm text-white/50">
-            {sourceLabel}
-            {snapshot.computedAt
-              ? ` · computed ${new Date(snapshot.computedAt).toLocaleString("en-US", { timeZone: "UTC" })} UTC`
-              : " · connect a source to compute"}
+            {state.accountId
+              ? `${sourceLabel}${
+                  snapshot.computedAt
+                    ? ` · computed ${new Date(snapshot.computedAt).toLocaleString("en-US", { timeZone: "UTC" })} UTC`
+                    : " · connect a source or upload an export"
+                }`
+              : "Create an account to keep this customer’s keys and ladder separate."}
           </p>
         </div>
-        <OverviewActions
-          hasDatagrid={Boolean(state.connections.datagrid?.apiKey)}
-          initialJob={state.job ?? emptyJob()}
-        />
+        {!state.accountId ? (
+          <a
+            href="/accounts"
+            className="inline-flex rounded-md bg-pc-orange px-3 py-1.5 text-xs font-medium text-white hover:bg-pc-orange-hover"
+          >
+            Go to Accounts
+          </a>
+        ) : null}
+        {state.accountId ? (
+          <OverviewActions
+            key={state.accountId}
+            hasDatagrid={Boolean(state.connections.datagrid?.apiKey)}
+            initialJob={state.job ?? emptyJob()}
+          />
+        ) : null}
       </div>
 
       <div className="space-y-6">
-        <UserLadder snapshot={snapshot} />
+        <UserLadder key={state.accountId ?? "none"} snapshot={snapshot} />
 
         <section className="rounded-2xl border border-dashed border-pc-orange/40 bg-pc-panel px-6 py-8">
           <p className="text-[11px] uppercase tracking-[0.18em] text-pc-orange">Next widget</p>

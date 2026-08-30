@@ -1,8 +1,24 @@
 import { emptyJob, readState, writeState } from "./store";
 import type { SyncJob, SyncStepLevel } from "./types";
 
-export async function startJob(mode: "sample" | "datagrid" | "upload"): Promise<SyncJob> {
-  const state = await readState();
+export function bindJob(accountId: string) {
+  return {
+    start: (mode: "sample" | "datagrid" | "upload") => startJob(mode, accountId),
+    addStep: (step: string, message: string, level: SyncStepLevel = "info") =>
+      addStep(step, message, level, accountId),
+    finish: (status: "success" | "error", extras?: { error?: string; failedStep?: string }) =>
+      finishJob(status, extras, accountId),
+    read: () => readState(accountId),
+    write: (state: Awaited<ReturnType<typeof readState>>) => writeState(state),
+  };
+}
+
+export async function startJob(
+  mode: "sample" | "datagrid" | "upload",
+  accountId?: string | null,
+): Promise<SyncJob> {
+  const state = await readState(accountId);
+  if (!state.accountId) throw new Error("Create an account before syncing.");
   state.job = {
     status: "running",
     mode,
@@ -20,8 +36,10 @@ export async function addStep(
   step: string,
   message: string,
   level: SyncStepLevel = "info",
+  accountId?: string | null,
 ): Promise<void> {
-  const state = await readState();
+  const state = await readState(accountId);
+  if (!state.accountId) return;
   const job = state.job ?? emptyJob();
   job.steps = [
     ...job.steps,
@@ -34,8 +52,10 @@ export async function addStep(
 export async function finishJob(
   status: "success" | "error",
   extras?: { error?: string; failedStep?: string },
+  accountId?: string | null,
 ): Promise<void> {
-  const state = await readState();
+  const state = await readState(accountId);
+  if (!state.accountId) return;
   const job = state.job ?? emptyJob();
   job.status = status;
   job.finishedAt = new Date().toISOString();

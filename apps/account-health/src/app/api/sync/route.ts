@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { snapshotFromOrg } from "@/lib/classify-org";
 import { publicDatagridError, syncOrg, validateKey } from "@/lib/datagrid";
 import { buildSampleSnapshot } from "@/lib/sample";
-import { emptyJob, readState, writeState } from "@/lib/store";
-import { addStep, finishJob, startJob } from "@/lib/sync-progress";
+import { emptyJob, readState } from "@/lib/store";
+import { bindJob } from "@/lib/sync-progress";
 
 export const maxDuration = 300;
 
@@ -15,6 +15,13 @@ export async function GET() {
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { mode?: string };
   const state = await readState();
+  if (!state.accountId) {
+    return NextResponse.json(
+      { error: "Create an account before syncing.", job: emptyJob() },
+      { status: 400 },
+    );
+  }
+  const jobApi = bindJob(state.accountId);
 
   if (state.job?.status === "running") {
     return NextResponse.json(
@@ -24,14 +31,14 @@ export async function POST(request: Request) {
   }
 
   if (body.mode === "sample") {
-    const job = await startJob("sample");
-    await addStep("sample", "Building sample users and dates…");
-    const next = await readState();
+    const job = await jobApi.start("sample");
+    await jobApi.addStep("sample", "Building sample users and dates…");
+    const next = await jobApi.read();
     next.snapshot = buildSampleSnapshot(new Date());
-    await writeState(next);
-    await addStep("sample", `Loaded ${next.snapshot.provisionedUsers} sample users.`);
-    await finishJob("success");
-    const done = await readState();
+    await jobApi.write(next);
+    await jobApi.addStep("sample", `Loaded ${next.snapshot.provisionedUsers} sample users.`);
+    await jobApi.finish("success");
+    const done = await jobApi.read();
     return NextResponse.json({ snapshot: done.snapshot, job: done.job ?? job });
   }
 
@@ -43,28 +50,29 @@ export async function POST(request: Request) {
     );
   }
 
-  await startJob("datagrid");
-  void runDatagridSync(apiKey);
-  const started = await readState();
+  await jobApi.start("datagrid");
+  void runDatagridSync(apiKey, state.accountId);
+  const started = await jobApi.read();
   return NextResponse.json({ job: started.job });
 }
 
-async function runDatagridSync(apiKey: string): Promise<void> {
+async function runDatagridSync(apiKey: string, accountId: string): Promise<void> {
+  const jobApi = bindJob(accountId);
   try {
-    await addStep("validate", "Checking the Datagrid key…");
+    await jobApi.addStep("validate", "Checking the Datagrid key…");
     const identity = await validateKey(apiKey);
-    await addStep(
+    await jobApi.addStep(
       "validate",
       identity.user_id
         ? `Key accepted. Identity ${identity.user_id.slice(0, 8)}…`
         : "Key accepted.",
     );
 
-    const org = await syncOrg(apiKey, addStep, { identity });
+    const org = await syncOrg(apiKey, jobApi.addStep, { identity });
 
-    await addStep("classify", "Classifying users from completed conversations…");
+    await jobApi.addStep("classify", "Classifying users from completed conversations…");
     const snapshot = snapshotFromOrg(org);
-    const state = await readState();
+    const state = await jobApi.read();
     state.directory = org.users.map((user) => ({
       id: user.id,
       email: user.email,
@@ -75,23 +83,23 @@ async function runDatagridSync(apiKey: string): Promise<void> {
       state.connections.datagrid.lastError = undefined;
       state.connections.datagrid.lastValidatedAt = new Date().toISOString();
     }
-    await writeState(state);
+    await jobApi.write(state);
 
-    await addStep(
+    await jobApi.addStep(
       "classify",
       snapshot.attribution === "unavailable"
         ? `Finished. ${snapshot.provisionedUsers} users, but conversations had no author so stages cannot be assigned.`
         : `Finished. ${snapshot.provisionedUsers} users classified.`,
     );
-    await finishJob("success");
+    await jobApi.finish("success");
   } catch (error) {
     const message = publicDatagridError(error);
-    await addStep("error", message, "error");
-    const state = await readState();
+    await jobApi.addStep("error", message, "error");
+    const state = await jobApi.read();
     if (state.connections.datagrid) {
       state.connections.datagrid.lastError = message;
-      await writeState(state);
+      await jobApi.write(state);
     }
-    await finishJob("error", { error: message, failedStep: "datagrid" });
+    await jobApi.finish("error", { error: message, failedStep: "datagrid" });
   }
 }

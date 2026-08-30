@@ -104,6 +104,26 @@ export type MetricsSnapshot = {
   users: ClassifiedUser[];
 };
 
+export type AccountRecord = {
+  id: string;
+  name: string;
+  createdAt: string;
+  connections: Connections;
+  snapshot: MetricsSnapshot;
+  job: SyncJob;
+  directory: DirectoryUser[];
+};
+
+export type PublicAccount = {
+  id: string;
+  name: string;
+  createdAt: string;
+  userCount: number;
+  source: MetricsSnapshot["source"];
+  computedAt: string | null;
+  current: boolean;
+};
+
 export type PublicSourceState = {
   id: SourceId;
   label: string;

@@ -3,7 +3,13 @@
 import { useMemo, useState } from "react";
 import type { PublicSourceState, SourceId } from "@/lib/types";
 
-export function SourcesBoard({ initial }: { initial: PublicSourceState[] }) {
+export function SourcesBoard({
+  initial,
+  accountName,
+}: {
+  initial: PublicSourceState[];
+  accountName: string | null;
+}) {
   const [sources, setSources] = useState(initial);
   const [pending, setPending] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -11,13 +17,23 @@ export function SourcesBoard({ initial }: { initial: PublicSourceState[] }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-medium tracking-tight text-white">Sources</h1>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-pc-orange">Sources</p>
+        <h1 className="mt-1 text-2xl font-medium tracking-tight text-white">
+          {accountName ?? "No account selected"}
+        </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/50">
-          Paste credentials here. They stay on this server. Datagrid is the seat
-          list. Person-level stages come from an insights CSV or Excel uploaded on
-          Overview — not from a Mixpanel API. The other systems are saved so the
-          input path is already defined.
+          {accountName
+            ? "Keys on this page belong only to this account. Datagrid is the seat list. Person-level stages come from an insights CSV or Excel uploaded on Overview."
+            : "Create an account first. Each customer keeps its own Datagrid key and insights export."}
         </p>
+        {!accountName ? (
+          <a
+            href="/accounts"
+            className="mt-4 inline-flex rounded-md bg-pc-orange px-3 py-1.5 text-xs font-medium text-white hover:bg-pc-orange-hover"
+          >
+            Go to Accounts
+          </a>
+        ) : null}
       </div>
 
       {message ? (
@@ -26,6 +42,7 @@ export function SourcesBoard({ initial }: { initial: PublicSourceState[] }) {
         </p>
       ) : null}
 
+      {accountName ? (
       <div className="space-y-4">
         {sources.map((source) => (
           <SourceCard
@@ -48,6 +65,7 @@ export function SourcesBoard({ initial }: { initial: PublicSourceState[] }) {
           />
         ))}
       </div>
+      ) : null}
     </div>
   );
 }

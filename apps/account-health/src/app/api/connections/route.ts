@@ -21,6 +21,9 @@ export async function POST(request: Request) {
   }
 
   const state = await readState();
+  if (!state.accountId) {
+    return NextResponse.json({ error: "Create an account before saving sources." }, { status: 400 });
+  }
   const incoming = Object.fromEntries(
     Object.entries(body.fields)
       .map(([key, value]) => [key, value.trim()])
