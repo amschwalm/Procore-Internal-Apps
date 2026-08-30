@@ -166,11 +166,10 @@ function SourceCard({
 }
 
 function StatusPill({ source }: { source: PublicSourceState }) {
-  const label = source.connected
-    ? source.usedNow
-      ? "Ready"
-      : "Saved"
-    : "Not connected";
+  let label = "Not connected";
+  if (source.lastError) label = "Error";
+  else if (source.lastValidatedAt) label = "Ready";
+  else if (source.connected) label = "Saved";
   return (
     <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-zinc-400">
       {label}

@@ -23,7 +23,7 @@ export function UserLadder({ snapshot }: { snapshot: MetricsSnapshot }) {
         <div className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
           <span>{total} users</span>
           <span>{snapshot.powerCount} power</span>
-          {snapshot.orgPower && snapshot.attribution !== "user" ? (
+          {snapshot.orgPower && snapshot.attribution === "unavailable" ? (
             <span>org builds</span>
           ) : null}
         </div>
