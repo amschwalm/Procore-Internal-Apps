@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { publicDatagridError, validateKey } from "@/lib/datagrid";
 import { publicSources } from "@/lib/sources";
+import { publicSlackError, validateSlackConnection } from "@/lib/slack";
 import { readState, writeState } from "@/lib/store";
 import type { Connections, SourceId } from "@/lib/types";
 
@@ -63,6 +64,41 @@ export async function POST(request: Request) {
     }
 
     state.connections.datagrid = next;
+  } else if (body.source === "slack") {
+    const existing = state.connections.slack;
+    const botToken = incoming.botToken || existing?.botToken;
+    const channelId = incoming.channelId || existing?.channelId;
+    if (!botToken || !channelId) {
+      return NextResponse.json({ error: "Slack bot token and channel ID are required" }, { status: 400 });
+    }
+
+    const next: NonNullable<Connections["slack"]> = {
+      botToken,
+      channelId,
+      lastValidatedAt: existing?.lastValidatedAt,
+      identityLabel: existing?.identityLabel,
+    };
+
+    if (body.validate) {
+      try {
+        const identity = await validateSlackConnection(botToken, channelId);
+        next.lastValidatedAt = new Date().toISOString();
+        next.identityLabel = identity.channelName
+          ? `Connected to #${identity.channelName}`
+          : "Bot token accepted";
+        next.lastError = undefined;
+      } catch (error) {
+        next.lastError = publicSlackError(error);
+        state.connections.slack = next;
+        await writeState(state);
+        return NextResponse.json(
+          { error: next.lastError, sources: publicSources(state.connections) },
+          { status: 400 },
+        );
+      }
+    }
+
+    state.connections.slack = next;
   } else {
     const previous = (state.connections[body.source] ?? {}) as Record<string, string>;
     state.connections[body.source] = { ...previous, ...incoming } as never;

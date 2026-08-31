@@ -1,3 +1,4 @@
+import type { CallSentimentPoint } from "./call-sentiment";
 import type { EngagementType } from "./lifecycle";
 import type { ToolRelevanceSummary } from "./procore-tools";
 
@@ -30,6 +31,9 @@ export type AvomaConnection = {
 export type SlackConnection = {
   botToken: string;
   channelId: string;
+  lastValidatedAt?: string;
+  identityLabel?: string;
+  lastError?: string;
 };
 
 export type HubspotConnection = {
@@ -88,7 +92,7 @@ export type SyncJobStatus = "idle" | "running" | "success" | "error";
 
 export type SyncJob = {
   status: SyncJobStatus;
-  mode: "sample" | "datagrid" | "upload" | null;
+  mode: "sample" | "datagrid" | "upload" | "slack" | "call-sentiment-sample" | null;
   startedAt: string | null;
   finishedAt: string | null;
   steps: SyncStep[];
@@ -118,6 +122,7 @@ export type AccountRecord = {
   snapshot: MetricsSnapshot;
   job: SyncJob;
   directory: DirectoryUser[];
+  callSentiment: CallSentimentPoint[];
 };
 
 export type PublicAccount = {

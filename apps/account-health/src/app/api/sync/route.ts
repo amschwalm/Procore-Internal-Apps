@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
+import { parseCallSummaryMessage, sampleCallSentimentPoints, sortCallSentimentPoints } from "@/lib/call-sentiment";
 import { snapshotFromOrg } from "@/lib/classify-org";
 import { publicDatagridError, syncOrg, validateKey } from "@/lib/datagrid";
 import { buildSampleSnapshot } from "@/lib/sample";
+import { listChannelMessages, publicSlackError, validateSlackConnection } from "@/lib/slack";
 import { emptyJob, readState } from "@/lib/store";
 import { bindJob } from "@/lib/sync-progress";
+import type { CallSentimentPoint } from "@/lib/call-sentiment";
 
 export const maxDuration = 300;
 
@@ -40,6 +43,32 @@ export async function POST(request: Request) {
     await jobApi.finish("success");
     const done = await jobApi.read();
     return NextResponse.json({ snapshot: done.snapshot, job: done.job ?? job });
+  }
+
+  if (body.mode === "call-sentiment-sample") {
+    const job = await jobApi.start("call-sentiment-sample");
+    await jobApi.addStep("sample", "Building sample call sentiment…");
+    const next = await jobApi.read();
+    next.callSentiment = sampleCallSentimentPoints(new Date());
+    await jobApi.write(next);
+    await jobApi.addStep("sample", `Loaded ${next.callSentiment.length} sample calls.`);
+    await jobApi.finish("success");
+    const done = await jobApi.read();
+    return NextResponse.json({ callSentiment: done.callSentiment, job: done.job ?? job });
+  }
+
+  if (body.mode === "slack") {
+    const slack = state.connections.slack;
+    if (!slack?.botToken || !slack?.channelId) {
+      return NextResponse.json(
+        { error: "Save a Slack bot token and channel ID on Sources before syncing.", job: state.job ?? emptyJob() },
+        { status: 400 },
+      );
+    }
+    await jobApi.start("slack");
+    void runSlackSync(slack.botToken, slack.channelId, state.accountId);
+    const started = await jobApi.read();
+    return NextResponse.json({ job: started.job });
   }
 
   const apiKey = state.connections.datagrid?.apiKey;
@@ -101,5 +130,62 @@ async function runDatagridSync(apiKey: string, accountId: string): Promise<void>
       await jobApi.write(state);
     }
     await jobApi.finish("error", { error: message, failedStep: "datagrid" });
+  }
+}
+
+const CALL_SENTIMENT_LOOKBACK_DAYS = 365;
+
+async function runSlackSync(botToken: string, channelId: string, accountId: string): Promise<void> {
+  const jobApi = bindJob(accountId);
+  try {
+    await jobApi.addStep("validate", "Checking the Slack bot token and channel…");
+    const identity = await validateSlackConnection(botToken, channelId);
+    await jobApi.addStep(
+      "validate",
+      `Connected${identity.channelName ? ` to #${identity.channelName}` : ""}${
+        identity.team ? ` in ${identity.team}` : ""
+      }.`,
+    );
+
+    const oldestTs = String(
+      Math.floor((Date.now() - CALL_SENTIMENT_LOOKBACK_DAYS * 86_400_000) / 1000),
+    );
+    await jobApi.addStep("history", `Reading the last ${CALL_SENTIMENT_LOOKBACK_DAYS} days of channel history…`);
+    const messages = await listChannelMessages(botToken, channelId, {
+      oldestTs,
+      onProgress: jobApi.addStep,
+    });
+    await jobApi.addStep("history", `Read ${messages.length} message${messages.length === 1 ? "" : "s"}.`);
+
+    const points: CallSentimentPoint[] = [];
+    for (const message of messages) {
+      const point = parseCallSummaryMessage({ ts: message.ts, text: message.text });
+      if (point) points.push(point);
+    }
+    const sorted = sortCallSentimentPoints(points);
+    await jobApi.addStep(
+      "classify",
+      `Parsed ${sorted.length} call summar${sorted.length === 1 ? "y" : "ies"} with a Mood section out of ${messages.length} message${messages.length === 1 ? "" : "s"}.`,
+    );
+
+    const state = await jobApi.read();
+    state.callSentiment = sorted;
+    if (state.connections.slack) {
+      state.connections.slack.lastError = undefined;
+      state.connections.slack.lastValidatedAt = new Date().toISOString();
+    }
+    await jobApi.write(state);
+
+    await jobApi.addStep("classify", `Finished. ${sorted.length} call sentiment points saved.`);
+    await jobApi.finish("success");
+  } catch (error) {
+    const message = publicSlackError(error);
+    await jobApi.addStep("error", message, "error");
+    const state = await jobApi.read();
+    if (state.connections.slack) {
+      state.connections.slack.lastError = message;
+      await jobApi.write(state);
+    }
+    await jobApi.finish("error", { error: message, failedStep: "slack" });
   }
 }

@@ -1,7 +1,9 @@
 import { AppShell } from "@/components/AppShell";
+import { AccountTimeline } from "@/components/AccountTimeline";
 import { OverviewActions } from "@/components/OverviewActions";
 import { ToolRelevance } from "@/components/ToolRelevance";
 import { UserLadder } from "@/components/UserLadder";
+import { summarizeIntroDates } from "@/lib/lifecycle";
 import { emptyJob, publicAccounts, readState, readWorkspace } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -50,12 +52,18 @@ export default async function OverviewPage() {
           <OverviewActions
             key={state.accountId}
             hasDatagrid={Boolean(state.connections.datagrid?.apiKey)}
+            hasSlack={Boolean(state.connections.slack?.botToken && state.connections.slack?.channelId)}
             initialJob={state.job ?? emptyJob()}
           />
         ) : null}
       </div>
 
       <div className="space-y-6">
+        <AccountTimeline
+          key={state.accountId ?? "none"}
+          points={state.callSentiment}
+          introPoints={summarizeIntroDates(snapshot.users)}
+        />
         <UserLadder key={state.accountId ?? "none"} snapshot={snapshot} />
         <ToolRelevance key={state.accountId ?? "none"} summary={snapshot.toolRelevance} />
       </div>

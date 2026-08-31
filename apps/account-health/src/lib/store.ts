@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import type { CallSentimentPoint } from "./call-sentiment";
 import { emptyCounts } from "./lifecycle";
 import type {
   AccountRecord,
@@ -21,6 +22,7 @@ export type AppState = {
   snapshot: MetricsSnapshot;
   job: SyncJob;
   directory: DirectoryUser[];
+  callSentiment: CallSentimentPoint[];
 };
 
 export type Workspace = {
@@ -63,6 +65,7 @@ export function emptyAccountState(): AppState {
     snapshot: emptySnapshot(),
     job: emptyJob(),
     directory: [],
+    callSentiment: [],
   };
 }
 
@@ -75,6 +78,7 @@ function emptyAccount(name: string): AccountRecord {
     snapshot: emptySnapshot(),
     job: emptyJob(),
     directory: [],
+    callSentiment: [],
   };
 }
 
@@ -111,6 +115,7 @@ function normalizeAccount(raw: Partial<AccountRecord>): AccountRecord {
     snapshot,
     job: raw.job ?? emptyJob(),
     directory,
+    callSentiment: raw.callSentiment ?? [],
   };
 }
 
@@ -144,6 +149,7 @@ export function migrateWorkspace(parsed: unknown): Workspace {
     snapshot,
     job: legacy.job ?? emptyJob(),
     directory: legacy.directory,
+    callSentiment: legacy.callSentiment,
   });
   return { currentAccountId: account.id, accounts: [account] };
 }
@@ -156,6 +162,7 @@ function accountToState(account: AccountRecord): AppState {
     snapshot: account.snapshot,
     job: account.job,
     directory: account.directory,
+    callSentiment: account.callSentiment,
   };
 }
 
@@ -217,6 +224,7 @@ export function applyAccountState(workspace: Workspace, state: AppState): Worksp
   current.snapshot = state.snapshot;
   current.job = state.job;
   current.directory = state.directory;
+  current.callSentiment = state.callSentiment;
   if (state.accountName?.trim()) current.name = state.accountName.trim();
   return workspace;
 }

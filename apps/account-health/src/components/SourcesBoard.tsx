@@ -165,7 +165,7 @@ function SourceCard({
         >
           {busy ? "Saving…" : "Save"}
         </button>
-        {source.id === "datagrid" ? (
+        {source.id === "datagrid" || source.id === "slack" ? (
           <button
             type="button"
             disabled={busy || (!dirty && !source.connected)}

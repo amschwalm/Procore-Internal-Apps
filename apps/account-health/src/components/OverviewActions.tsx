@@ -8,9 +8,11 @@ import type { SyncJob } from "@/lib/types";
 
 export function OverviewActions({
   hasDatagrid,
+  hasSlack,
   initialJob,
 }: {
   hasDatagrid: boolean;
+  hasSlack: boolean;
   initialJob: SyncJob;
 }) {
   const router = useRouter();
@@ -45,7 +47,7 @@ export function OverviewActions({
     };
   }, [running, router]);
 
-  async function run(mode: "sample" | "datagrid") {
+  async function run(mode: "sample" | "datagrid" | "call-sentiment-sample" | "slack") {
     setError(null);
     const response = await fetch("/api/sync", {
       method: "POST",
@@ -59,7 +61,7 @@ export function OverviewActions({
       return;
     }
     if (payload.job) setJob(payload.job);
-    if (mode === "sample") {
+    if (mode === "sample" || mode === "call-sentiment-sample") {
       router.refresh();
     }
   }
@@ -90,6 +92,33 @@ export function OverviewActions({
         ) : (
           <span className="text-xs text-white/45">
             Datagrid supplies the seat list. Upload an insights export to assign stages.
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={running}
+          onClick={() => run("call-sentiment-sample")}
+          className="rounded-md border border-white/25 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-40"
+        >
+          Load sample sentiment
+        </button>
+        <button
+          type="button"
+          disabled={running || !hasSlack}
+          onClick={() => run("slack")}
+          className="rounded-md bg-pc-orange px-3 py-1.5 text-xs font-medium text-white hover:bg-pc-orange-hover disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {running && job.mode === "slack" ? `Syncing · ${elapsed}` : "Sync Slack"}
+        </button>
+        {!hasSlack ? (
+          <span className="text-xs text-white/45">
+            Add a Slack bot token and channel on Sources to read call summaries.
+          </span>
+        ) : (
+          <span className="text-xs text-white/45">
+            Reads AI call-summary posts in the configured channel for the Customer Sentiment timeline.
           </span>
         )}
       </div>
