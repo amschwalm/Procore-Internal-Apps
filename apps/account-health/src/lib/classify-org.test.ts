@@ -53,5 +53,38 @@ describe("snapshotFromOrg", () => {
     expect(user?.type).toBe("sticky");
     expect(user?.daysToConversion).not.toBeNull();
     expect(user?.conversionEntryDate).toBe(user?.lastActiveDate);
+    expect(snapshot.conversationVolume?.current30).toBe(5);
+  });
+
+  it("still reports conversation volume when authors are missing", () => {
+    const now = new Date("2026-08-30T12:00:00.000Z");
+    const snapshot = snapshotFromOrg(
+      org({
+        conversations: [
+          {
+            id: "c1",
+            created_at: "2026-08-20T12:00:00.000Z",
+            authorId: null,
+            authorField: null,
+            completed: true,
+          },
+          {
+            id: "c2",
+            created_at: "2026-07-10T12:00:00.000Z",
+            authorId: null,
+            authorField: null,
+            completed: true,
+          },
+        ],
+      }),
+      now,
+    );
+    expect(snapshot.attribution).toBe("unavailable");
+    expect(snapshot.conversationVolume).toEqual({
+      current30: 1,
+      prior30: 1,
+      deltaAbs: 0,
+      deltaPct: 0,
+    });
   });
 });

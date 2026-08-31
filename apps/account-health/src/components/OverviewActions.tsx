@@ -118,7 +118,7 @@ export function OverviewActions({
           </span>
         ) : (
           <span className="text-xs text-white/45">
-            Reads AI call-summary posts in the configured channel for the Customer Sentiment timeline.
+            Reads AI call-summary posts in the configured channel for Timeline sentiment and Growth Areas.
           </span>
         )}
       </div>

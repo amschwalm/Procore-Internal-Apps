@@ -7,7 +7,10 @@ import {
   conversionRate,
   convertedCount,
   emptyCounts,
+  fillConversationWeeks,
   findConversionEntryDate,
+  summarizeConversationsByWeek,
+  summarizeConversationVolume,
   summarizeConversionTiming,
   summarizeIntroDates,
   tally,
@@ -299,5 +302,72 @@ describe("summarizeIntroDates", () => {
     ]);
     expect(points[0]).toEqual({ date: "2026-01-01", count: 1, names: ["pat@acme.test"] });
     expect(points[1]).toEqual({ date: "2026-01-02", count: 1, names: ["u2"] });
+  });
+});
+
+describe("summarizeConversationVolume", () => {
+  it("splits current trailing 30 against the 30 days before that", () => {
+    const conversations = [
+      conv(2),
+      conv(10),
+      conv(40),
+      conv(90),
+    ];
+    const summary = summarizeConversationVolume(conversations, now);
+    expect(summary.current30).toBe(2);
+    expect(summary.prior30).toBe(1);
+    expect(summary.deltaAbs).toBe(1);
+    expect(summary.deltaPct).toBe(100);
+  });
+
+  it("treats the current-window start as current, not prior", () => {
+    const currentStart = trailingWindowStart(now, 30);
+    const summary = summarizeConversationVolume([{ createdAt: currentStart }], now);
+    expect(summary.current30).toBe(1);
+    expect(summary.prior30).toBe(0);
+  });
+
+  it("returns a null percent when the prior window is empty", () => {
+    const summary = summarizeConversationVolume([conv(1), conv(2)], now);
+    expect(summary.prior30).toBe(0);
+    expect(summary.deltaAbs).toBe(2);
+    expect(summary.deltaPct).toBeNull();
+  });
+
+  it("reports a negative delta when volume dropped", () => {
+    const summary = summarizeConversationVolume([conv(5), conv(40), conv(45)], now);
+    expect(summary.current30).toBe(1);
+    expect(summary.prior30).toBe(2);
+    expect(summary.deltaAbs).toBe(-1);
+    expect(summary.deltaPct).toBe(-50);
+  });
+});
+
+describe("summarizeConversationsByWeek", () => {
+  it("buckets into Monday-start ISO weeks and sorts ascending", () => {
+    // 2026-08-24 is a Monday; 2026-08-30 is the following Sunday (same week).
+    const points = summarizeConversationsByWeek([
+      { createdAt: new Date("2026-08-24T12:00:00.000Z") },
+      { createdAt: new Date("2026-08-30T12:00:00.000Z") },
+      { createdAt: new Date("2026-08-17T12:00:00.000Z") },
+    ]);
+    expect(points).toEqual([
+      { weekStart: "2026-08-17", count: 1 },
+      { weekStart: "2026-08-24", count: 2 },
+    ]);
+  });
+});
+
+describe("fillConversationWeeks", () => {
+  it("inserts zero-count Mondays across a range", () => {
+    const filled = fillConversationWeeks(
+      [{ weekStart: "2026-08-17", count: 4 }],
+      { startDate: "2026-08-10", endDate: "2026-08-30" },
+    );
+    expect(filled).toEqual([
+      { weekStart: "2026-08-10", count: 0 },
+      { weekStart: "2026-08-17", count: 4 },
+      { weekStart: "2026-08-24", count: 0 },
+    ]);
   });
 });

@@ -1,6 +1,8 @@
 import { isBuilderAgent, isQualifyingKnowledge } from "./attribution";
 import {
   classifyEngagement,
+  summarizeConversationsByWeek,
+  summarizeConversationVolume,
   tally,
   type CompletedConversation,
 } from "./lifecycle";
@@ -14,6 +16,11 @@ function displayName(user: SyncedOrg["users"][number]): string {
 
 export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapshot {
   const completed = org.conversations.filter((c) => c.completed && c.created_at);
+  const dated = completed.map((conversation) => ({
+    createdAt: new Date(conversation.created_at!),
+  }));
+  const conversationVolume = summarizeConversationVolume(dated, now);
+  const conversationsByWeek = summarizeConversationsByWeek(dated);
   const attributed = completed.filter((c) => c.authorId);
   const canAttribute = attributed.length > 0 && org.users.length > 0;
 
@@ -47,6 +54,8 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
       powerCount: 0,
       orgPower: orgHasPower,
       discoveredAuthorFields: org.discoveredAuthorFields,
+      conversationVolume,
+      conversationsByWeek,
       users: org.users.map((user) => ({
         id: user.id,
         email: user.email,
@@ -112,5 +121,7 @@ export function snapshotFromOrg(org: SyncedOrg, now = new Date()): MetricsSnapsh
     orgPower: orgHasPower,
     discoveredAuthorFields: org.discoveredAuthorFields,
     users,
+    conversationVolume,
+    conversationsByWeek,
   };
 }

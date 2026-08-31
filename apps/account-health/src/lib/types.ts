@@ -1,5 +1,6 @@
 import type { CallSentimentPoint } from "./call-sentiment";
-import type { EngagementType } from "./lifecycle";
+import type { GrowthSignal } from "./growth-signals";
+import type { ConversationVolumeSummary, EngagementType, WeekPoint } from "./lifecycle";
 import type { ToolRelevanceSummary } from "./procore-tools";
 
 export type SourceId =
@@ -112,6 +113,8 @@ export type MetricsSnapshot = {
   discoveredAuthorFields: string[];
   users: ClassifiedUser[];
   toolRelevance?: ToolRelevanceSummary;
+  conversationVolume?: ConversationVolumeSummary;
+  conversationsByWeek?: WeekPoint[];
 };
 
 export type AccountRecord = {
@@ -123,6 +126,7 @@ export type AccountRecord = {
   job: SyncJob;
   directory: DirectoryUser[];
   callSentiment: CallSentimentPoint[];
+  growthSignals: GrowthSignal[];
 };
 
 export type PublicAccount = {

@@ -1,4 +1,10 @@
-import { addUtcDays, classifyEngagement, tally } from "./lifecycle";
+import {
+  addUtcDays,
+  classifyEngagement,
+  summarizeConversationsByWeek,
+  summarizeConversationVolume,
+  tally,
+} from "./lifecycle";
 import type { ClassifiedUser, MetricsSnapshot } from "./types";
 
 type Spec = {
@@ -97,19 +103,26 @@ const SPECS: Spec[] = [
   ...Array.from({ length: 11 }, (_, i) => ({
     id: `pass-${i}`,
     type: "passive" as const,
-    daysAgo: [18, 3 + (i % 2)],
+    daysAgo: [55, 40, 18, 3 + (i % 2)],
     power: i === 1,
   })),
   ...Array.from({ length: 8 }, (_, i) => ({
     id: `stick-${i}`,
     type: "sticky" as const,
-    daysAgo: [20, 9, 6, 4, 2, 1],
+    daysAgo: [75, 60, 48, 38, 20, 9, 6, 4, 2, 1],
     power: i < 2,
   })),
   ...Array.from({ length: 5 }, (_, i) => ({
     id: `adv-${i}`,
     type: "advanced" as const,
-    daysAgo: Array.from({ length: 101 }, (_, chat) => [16, 8, 5, 3, 2, 1][chat % 6]!),
+    daysAgo: [
+      80,
+      70,
+      55,
+      45,
+      38,
+      ...Array.from({ length: 101 }, (_, chat) => [16, 8, 5, 3, 2, 1][chat % 6]!),
+    ],
     power: true,
   })),
 ];
@@ -119,11 +132,13 @@ function emailFromName(name: string): string {
 }
 
 export function buildSampleSnapshot(computedAt = now): MetricsSnapshot {
+  const allConversations: Array<{ createdAt: Date }> = [];
   const users: ClassifiedUser[] = SPECS.map((spec, index) => {
     const conversations = spec.daysAgo.map((daysAgo, convIndex) => ({
       createdAt: addUtcDays(computedAt, -daysAgo),
       agentIds: spec.agents?.[convIndex] ?? ["Ask Agent"],
     }));
+    allConversations.push(...conversations);
     const result = classifyEngagement(conversations, computedAt);
     const name = PEOPLE[index] ?? spec.id;
     return {
@@ -159,5 +174,7 @@ export function buildSampleSnapshot(computedAt = now): MetricsSnapshot {
     orgPower: powerCount > 0,
     discoveredAuthorFields: ["sample"],
     users,
+    conversationVolume: summarizeConversationVolume(allConversations, computedAt),
+    conversationsByWeek: summarizeConversationsByWeek(allConversations),
   };
 }

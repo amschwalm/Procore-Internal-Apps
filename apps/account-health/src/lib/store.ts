@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import type { CallSentimentPoint } from "./call-sentiment";
+import type { GrowthSignal } from "./growth-signals";
 import { emptyCounts } from "./lifecycle";
 import type {
   AccountRecord,
@@ -23,6 +24,7 @@ export type AppState = {
   job: SyncJob;
   directory: DirectoryUser[];
   callSentiment: CallSentimentPoint[];
+  growthSignals: GrowthSignal[];
 };
 
 export type Workspace = {
@@ -66,6 +68,7 @@ export function emptyAccountState(): AppState {
     job: emptyJob(),
     directory: [],
     callSentiment: [],
+    growthSignals: [],
   };
 }
 
@@ -79,6 +82,7 @@ function emptyAccount(name: string): AccountRecord {
     job: emptyJob(),
     directory: [],
     callSentiment: [],
+    growthSignals: [],
   };
 }
 
@@ -116,6 +120,7 @@ function normalizeAccount(raw: Partial<AccountRecord>): AccountRecord {
     job: raw.job ?? emptyJob(),
     directory,
     callSentiment: raw.callSentiment ?? [],
+    growthSignals: raw.growthSignals ?? [],
   };
 }
 
@@ -150,6 +155,7 @@ export function migrateWorkspace(parsed: unknown): Workspace {
     job: legacy.job ?? emptyJob(),
     directory: legacy.directory,
     callSentiment: legacy.callSentiment,
+    growthSignals: legacy.growthSignals,
   });
   return { currentAccountId: account.id, accounts: [account] };
 }
@@ -163,6 +169,7 @@ function accountToState(account: AccountRecord): AppState {
     job: account.job,
     directory: account.directory,
     callSentiment: account.callSentiment,
+    growthSignals: account.growthSignals,
   };
 }
 
@@ -225,6 +232,7 @@ export function applyAccountState(workspace: Workspace, state: AppState): Worksp
   current.job = state.job;
   current.directory = state.directory;
   current.callSentiment = state.callSentiment;
+  current.growthSignals = state.growthSignals;
   if (state.accountName?.trim()) current.name = state.accountName.trim();
   return workspace;
 }

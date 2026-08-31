@@ -1,5 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { AccountTimeline } from "@/components/AccountTimeline";
+import { ConversationVolume } from "@/components/ConversationVolume";
+import { GrowthAreas } from "@/components/GrowthAreas";
 import { OverviewActions } from "@/components/OverviewActions";
 import { ToolRelevance } from "@/components/ToolRelevance";
 import { UserLadder } from "@/components/UserLadder";
@@ -59,13 +61,25 @@ export default async function OverviewPage() {
       </div>
 
       <div className="space-y-6">
+        <ConversationVolume
+          key={`${state.accountId ?? "none"}-volume`}
+          summary={snapshot.conversationVolume}
+        />
         <AccountTimeline
           key={state.accountId ?? "none"}
           points={state.callSentiment}
           introPoints={summarizeIntroDates(snapshot.users)}
+          conversationWeeks={snapshot.conversationsByWeek ?? []}
         />
         <UserLadder key={state.accountId ?? "none"} snapshot={snapshot} />
-        <ToolRelevance key={state.accountId ?? "none"} summary={snapshot.toolRelevance} />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ToolRelevance key={state.accountId ?? "none"} summary={snapshot.toolRelevance} />
+          <GrowthAreas
+            key={`${state.accountId ?? "none"}-growth`}
+            signals={state.growthSignals}
+            totalCalls={state.callSentiment.length}
+          />
+        </div>
       </div>
     </AppShell>
   );
