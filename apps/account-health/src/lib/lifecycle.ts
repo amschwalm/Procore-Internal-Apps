@@ -344,3 +344,30 @@ export function summarizeConversionTiming(
     windows,
   };
 }
+
+export type IntroDatePoint = {
+  date: string;
+  count: number;
+  names: string[];
+};
+
+/**
+ * Groups users by their intro date (first completed conversation) so a
+ * timeline can plot "how many people started on this day" — a bigger dot
+ * for a cluster, a smaller one for a single person.
+ */
+export function summarizeIntroDates(
+  users: Array<{ introDate: string | null; name?: string; email?: string; id: string }>,
+): IntroDatePoint[] {
+  const byDate = new Map<string, string[]>();
+  for (const user of users) {
+    if (!user.introDate) continue;
+    const label = user.name?.trim() || user.email?.trim() || user.id;
+    const names = byDate.get(user.introDate) ?? [];
+    names.push(label);
+    byDate.set(user.introDate, names);
+  }
+  return [...byDate.entries()]
+    .map(([date, names]) => ({ date, count: names.length, names }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}

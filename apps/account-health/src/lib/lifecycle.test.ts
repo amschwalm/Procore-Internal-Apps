@@ -9,6 +9,7 @@ import {
   emptyCounts,
   findConversionEntryDate,
   summarizeConversionTiming,
+  summarizeIntroDates,
   tally,
   totalFromCounts,
   trailingWindowStart,
@@ -271,5 +272,32 @@ describe("conversionRate", () => {
 
   it("is null on a fully empty snapshot", () => {
     expect(conversionRate(emptyCounts())).toBeNull();
+  });
+});
+
+describe("summarizeIntroDates", () => {
+  it("groups users by intro date and sorts ascending", () => {
+    const points = summarizeIntroDates([
+      { id: "1", name: "Ava", introDate: "2026-06-01" },
+      { id: "2", name: "Ben", introDate: "2026-05-01" },
+      { id: "3", name: "Cara", introDate: "2026-06-01" },
+    ]);
+    expect(points).toEqual([
+      { date: "2026-05-01", count: 1, names: ["Ben"] },
+      { date: "2026-06-01", count: 2, names: ["Ava", "Cara"] },
+    ]);
+  });
+
+  it("skips users with no intro date", () => {
+    expect(summarizeIntroDates([{ id: "1", introDate: null }])).toEqual([]);
+  });
+
+  it("falls back to email then id when name is missing", () => {
+    const points = summarizeIntroDates([
+      { id: "u1", email: "pat@acme.test", introDate: "2026-01-01" },
+      { id: "u2", introDate: "2026-01-02" },
+    ]);
+    expect(points[0]).toEqual({ date: "2026-01-01", count: 1, names: ["pat@acme.test"] });
+    expect(points[1]).toEqual({ date: "2026-01-02", count: 1, names: ["u2"] });
   });
 });
