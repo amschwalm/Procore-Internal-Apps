@@ -1,138 +1,192 @@
-// Growth-area scanner over Slack call-summary posts. Looks for where CS/PS
-// can target additional agents, expansion, or an enterprise motion.
+// Target use cases scanned from Slack call-summary posts. The widget answers:
+// "what future agent / Procore use case is this customer interested in, and
+// what problem made them ask?" — not enterprise-motion themes like seats or SSO.
 //
-// Same "why a local keyword list" reasoning as Tool Relevance and Mood
-// sentiment: there is no LLM key in this app, and Avoma/Gong topic APIs
-// need credentials we don't have yet. Treat hits as directional — several
-// phrases ("expand", "embedded", "training") show up in ordinary project
-// talk, so a generic mention can still register.
+// Same local-keyword approach as Areas of Interest and Mood sentiment: no LLM
+// key in this app. Treat hits as directional.
 
-export const GROWTH_CATEGORIES = [
-  "new_agent",
-  "enterprise",
-  "expansion",
-  "integration",
-  "workflow",
-  "training",
-] as const;
-
-export type GrowthCategory = (typeof GROWTH_CATEGORIES)[number];
-
-export const GROWTH_LABELS: Record<GrowthCategory, string> = {
-  new_agent: "New agents",
-  enterprise: "Enterprise conversion",
-  expansion: "Account expansion",
-  integration: "Integrations",
-  workflow: "Workflow agents",
-  training: "Enablement",
-};
-
-export const GROWTH_HINTS: Record<GrowthCategory, string> = {
-  new_agent: "Interest in building or commissioning additional agents",
-  enterprise: "Org-wide rollout, seats, SSO, or enterprise motion",
-  expansion: "More users, projects, or volume at scale",
-  integration: "Connectors, embedded Procore, or other systems",
-  workflow: "Named operational workflows they want an agent for",
-  training: "Training, onboarding, or enablement of more people",
-};
-
-type CategorySpec = {
-  category: GrowthCategory;
-  keywords: string[];
-};
-
-const CATEGORY_SPECS: CategorySpec[] = [
+export const TARGET_USE_CASES = [
   {
-    category: "new_agent",
+    id: "meetings",
+    label: "Meetings",
+    hint: "Minutes and action items are not captured reliably",
     keywords: [
-      "new agent",
-      "another agent",
-      "additional agent",
-      "more agents",
-      "build an agent",
-      "create an agent",
-      "creating an agent",
-      "want an agent",
-      "digest agent",
-      "compliance agent",
-      "custom agent",
-      "agent for",
+      "looking at meetings",
+      "looking into meetings",
+      "interested in meetings",
+      "meetings in procore",
+      "meetings use case",
+      "meetings agent",
+      "meetings tool",
+      "meeting minutes",
+      "meeting notes",
+      "meeting log",
+      "meeting agenda",
+      "standup minutes",
+      "oac minutes",
+      "oac notes",
     ],
   },
   {
-    category: "enterprise",
-    keywords: [
-      "enterprise",
-      "org-wide",
-      "organization-wide",
-      "company-wide",
-      "org wide",
-      "rollout",
-      "roll out",
-      "rolling out",
-      "more seats",
-      "seat expansion",
-      "sso",
-      "single sign-on",
-      "admin controls",
-      "it security",
-      "procurement",
-    ],
+    id: "rfis",
+    label: "RFIs",
+    hint: "Open RFIs age without a clear owner or follow-up",
+    keywords: ["rfi agent", "rfis", "rfi", "request for information", "aging rfi"],
   },
   {
-    category: "expansion",
-    keywords: [
-      "more users",
-      "more people",
-      "more projects",
-      "other projects",
-      "other jobs",
-      "additional teamspace",
-      "more teamspaces",
-      "at scale",
-      "at-scale",
-      "expand to",
-      "expansion",
-      "scale remains",
-    ],
-  },
-  {
-    category: "integration",
-    keywords: [
-      "embedded experience",
-      "embedded-experience",
-      "legacy connector",
-      "procore connector",
-      "procore integration",
-      "connector",
-      "connectors",
-      "erp",
-    ],
-  },
-  {
-    category: "workflow",
+    id: "submittals",
+    label: "Submittals",
+    hint: "Submittal packages are incomplete or slow to review",
     keywords: [
       "submittal digest",
       "submittal compliance",
-      "duplication registry",
-      "rfi agent",
-      "punch list agent",
-      "daily log agent",
-      "workflow agent",
+      "submittal workflow",
+      "submittal packages",
+      "submittals",
+      "submittal",
     ],
   },
   {
-    category: "training",
+    id: "search",
+    label: "Document search",
+    hint: "People cannot find the right drawing, spec, or ticket in the pile",
     keywords: [
-      "training",
-      "enablement",
-      "onboarding",
-      "workshop",
-      "lunch and learn",
-      "lunch-and-learn",
-      "train the",
+      "document search",
+      "search-based",
+      "search results",
+      "can't find",
+      "cannot find",
+      "inspector pdfs",
+      "pour ticket",
     ],
   },
+  {
+    id: "punch_list",
+    label: "Punch list",
+    hint: "Punch items slip through closeout",
+    keywords: ["punch list", "punchlist", "punch-list"],
+  },
+  {
+    id: "daily_log",
+    label: "Daily log",
+    hint: "Field notes are typed up after the fact instead of captured live",
+    keywords: ["daily log", "daily logs", "daily report"],
+  },
+  {
+    id: "drawings",
+    label: "Drawings",
+    hint: "The current set is hard to trust or slow to find",
+    keywords: ["drawing set", "as-built", "as built", "drawings"],
+  },
+  {
+    id: "specifications",
+    label: "Specifications",
+    hint: "Spec sections are slow to look up during reviews",
+    keywords: ["spec section", "specifications", "spec book"],
+  },
+  {
+    id: "inspections",
+    label: "Inspections",
+    hint: "Inspection checklists and history are hard to pull together",
+    keywords: ["inspection checklist", "inspection log", "inspections"],
+  },
+  {
+    id: "change_orders",
+    label: "Change orders",
+    hint: "Change-order status is scattered across email and logs",
+    keywords: ["change order", "change orders", "co log"],
+  },
+  {
+    id: "budget",
+    label: "Budget",
+    hint: "Budget vs actual is not visible without a manual pull",
+    keywords: ["budget line", "cost code budget", "budget vs"],
+  },
+  {
+    id: "timesheets",
+    label: "Timesheets",
+    hint: "Time capture is late or incomplete",
+    keywords: ["timesheet", "timesheets", "time card", "timecard"],
+  },
+  {
+    id: "email_digest",
+    label: "Email digest",
+    hint: "Recurring status still has to be assembled by hand",
+    keywords: ["digest email", "digest agent", "recurring digest"],
+  },
+  {
+    id: "compliance",
+    label: "Compliance",
+    hint: "Compliance checks miss rows or need a manual registry",
+    keywords: ["compliance digest", "duplication registry", "compliance agent"],
+  },
+] as const;
+
+export type GrowthCategory = (typeof TARGET_USE_CASES)[number]["id"];
+
+export const GROWTH_CATEGORIES: GrowthCategory[] = TARGET_USE_CASES.map((useCase) => useCase.id);
+
+export function isGrowthCategory(value: string): value is GrowthCategory {
+  return (GROWTH_CATEGORIES as readonly string[]).includes(value);
+}
+
+/** Drops legacy expansion-theme rows (enterprise, new_agent, …) after the retarget. */
+export function normalizeGrowthSignals(signals: unknown): GrowthSignal[] {
+  if (!Array.isArray(signals)) return [];
+  const cleaned: GrowthSignal[] = [];
+  for (const row of signals) {
+    if (!row || typeof row !== "object") continue;
+    const signal = row as GrowthSignal;
+    if (!isGrowthCategory(signal.category)) continue;
+    cleaned.push({
+      ...signal,
+      problem: signal.problem?.trim() || GROWTH_HINTS[signal.category],
+    });
+  }
+  return cleaned;
+}
+
+export const GROWTH_LABELS: Record<GrowthCategory, string> = Object.fromEntries(
+  TARGET_USE_CASES.map((useCase) => [useCase.id, useCase.label]),
+) as Record<GrowthCategory, string>;
+
+export const GROWTH_HINTS: Record<GrowthCategory, string> = Object.fromEntries(
+  TARGET_USE_CASES.map((useCase) => [useCase.id, useCase.hint]),
+) as Record<GrowthCategory, string>;
+
+const PROBLEM_CUES = [
+  "aren't captured",
+  "not captured",
+  "missing",
+  "incomplete",
+  "can't",
+  "cannot",
+  "blocker",
+  "blocked",
+  "manual",
+  "after the fact",
+  "unanswered",
+  "aging",
+  "inconsistent",
+  "struggle",
+  "slips",
+  "slip through",
+  "problem",
+  "issue",
+  "gap",
+  "slow",
+  "don't have",
+  "does not",
+  "doesn't",
+  "hard to",
+  "typed up",
+  "losing",
+  "lost",
+  "not working",
+  "no follow-up",
+  "follow-up",
+  "skip",
+  "mess",
 ];
 
 function escapeRegExp(value: string): string {
@@ -145,10 +199,10 @@ function keywordPattern(keyword: string): RegExp {
   return hasWordChars ? new RegExp(`\\b${escaped}\\b`, "i") : new RegExp(escaped, "i");
 }
 
-const CATEGORY_PATTERNS = CATEGORY_SPECS.map((spec) => ({
-  category: spec.category,
-  keywords: spec.keywords,
-  patterns: spec.keywords.map((keyword) => ({
+const USE_CASE_PATTERNS = TARGET_USE_CASES.map((useCase) => ({
+  id: useCase.id,
+  hint: useCase.hint,
+  patterns: useCase.keywords.map((keyword) => ({
     keyword,
     pattern: keywordPattern(keyword),
   })),
@@ -159,21 +213,32 @@ export type GrowthMatch = {
   keywords: string[];
 };
 
-/** Returns every growth category whose keywords appear in the given text. */
+/** Returns every target use case whose keywords appear in the given text. */
 export function matchGrowthAreasForText(text: string): GrowthMatch[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
 
   const matches: GrowthMatch[] = [];
-  for (const spec of CATEGORY_PATTERNS) {
+  for (const spec of USE_CASE_PATTERNS) {
     const keywords = spec.patterns
       .filter(({ pattern }) => pattern.test(trimmed))
       .map(({ keyword }) => keyword);
     if (keywords.length > 0) {
-      matches.push({ category: spec.category, keywords });
+      matches.push({ category: spec.id, keywords });
     }
   }
   return matches;
+}
+
+export function extractProblem(text: string): string | null {
+  const flattened = text.replace(/\s+/g, " ").trim();
+  if (!flattened) return null;
+  const sentences = flattened.split(/(?<=[.!?])\s+/);
+  const hit = sentences.find((sentence) =>
+    PROBLEM_CUES.some((cue) => sentence.toLowerCase().includes(cue)),
+  );
+  if (!hit) return null;
+  return hit.replace(/^[-•\s]+/, "").trim();
 }
 
 export type GrowthCall = {
@@ -191,6 +256,7 @@ export type GrowthSignal = {
   title: string;
   category: GrowthCategory;
   excerpt: string;
+  problem: string;
   matchedKeywords: string[];
   source: "slack" | "sample";
 };
@@ -212,6 +278,7 @@ export function extractGrowthSignals(calls: GrowthCall[]): GrowthSignal[] {
   const signals: GrowthSignal[] = [];
   for (const call of calls) {
     const matches = matchGrowthAreasForText(call.text);
+    const problem = extractProblem(call.text);
     for (const match of matches) {
       signals.push({
         id: `${call.id}:${match.category}`,
@@ -220,6 +287,7 @@ export function extractGrowthSignals(calls: GrowthCall[]): GrowthSignal[] {
         title: call.title,
         category: match.category,
         excerpt: excerptAround(call.text, match.keywords[0] ?? ""),
+        problem: problem ?? GROWTH_HINTS[match.category],
         matchedKeywords: match.keywords,
         source: call.source,
       });
@@ -236,7 +304,13 @@ export type GrowthAreaRow = {
   hint: string;
   count: number;
   shareOfMatched: number;
-  examples: Array<{ date: string; title: string; excerpt: string; keywords: string[] }>;
+  examples: Array<{
+    date: string;
+    title: string;
+    excerpt: string;
+    problem: string;
+    keywords: string[];
+  }>;
 };
 
 export type GrowthSignalSummary = {
@@ -254,6 +328,7 @@ export function summarizeGrowthSignals(
   const matchedCalls = matchedCallIds.size;
   const byCategory = new Map<GrowthCategory, GrowthSignal[]>();
   for (const signal of signals) {
+    if (!isGrowthCategory(signal.category)) continue;
     const list = byCategory.get(signal.category) ?? [];
     list.push(signal);
     byCategory.set(signal.category, list);
@@ -262,16 +337,18 @@ export function summarizeGrowthSignals(
   const areas: GrowthAreaRow[] = GROWTH_CATEGORIES.map((category) => {
     const list = byCategory.get(category) ?? [];
     const uniqueCalls = new Set(list.map((signal) => signal.callId));
+    const problem = list.find((signal) => signal.problem)?.problem ?? GROWTH_HINTS[category];
     return {
       category,
       label: GROWTH_LABELS[category],
-      hint: GROWTH_HINTS[category],
+      hint: problem,
       count: uniqueCalls.size,
       shareOfMatched: matchedCalls > 0 ? (uniqueCalls.size / matchedCalls) * 100 : 0,
       examples: list.map((signal) => ({
         date: signal.date,
         title: signal.title,
         excerpt: signal.excerpt,
+        problem: signal.problem,
         keywords: signal.matchedKeywords,
       })),
     };
@@ -288,18 +365,17 @@ export function summarizeGrowthSignals(
 }
 
 const SAMPLE_BODIES = [
-  `Key topics: at-scale document retrieval of ~300 inspector PDFs; a submittal compliance digest agent; SQL completeness in the Procore embedded experience. Next steps: reconfigure the digest agent and escalate the embedded-experience connector issue.`,
-  `Weekly sync. They asked for a training workshop next month so more people on the job can run search. Enablement is the gated next step before onboarding the rest of the PMs.`,
-  `Follow-up on the submittal workflow. Dean wants another agent for RFIs and a punch list agent once the digest is stable. Palak will scope the RFI agent.`,
-  `QBR prep. Procurement is asking about an enterprise rollout and more seats. SSO / single sign-on came up as an IT security prerequisite.`,
-  `Escalation review. The legacy connector and embedded experience are still returning incomplete row counts — a known integration gap engineering is fixing.`,
-  `Renewal check-in. They want to expand to other projects after this one and roll out org-wide if the digest agent keeps landing.`,
+  `Inspectors cannot find pour tickets across hundreds of PDFs. Document search is the workhorse but retrieval is inconsistent, so they want a more reliable search use case.`,
+  `PMs keep missing action items because meeting minutes aren't captured. They're interested in a meetings use case so an agent can draft minutes and owners after each standup.`,
+  `Open RFIs sit unanswered for weeks. They want an RFI agent that flags aging items and drafts a follow-up.`,
+  `Submittal packages are incomplete at scale — the digest agent only pulls a subset of PDFs. They want a submittal compliance digest they can trust.`,
+  `Daily logs are still typed up after the fact. They're looking at a daily log use case to capture notes from the field instead of reconstructing the day later.`,
+  `Punch list items slip through closeout. They asked about a punch list agent once the current digest is stable.`,
 ];
 
 /**
- * Pairs sample call-sentiment points with short bodies that contain
- * expansion-style language so Growth Areas Identified has something to show
- * before Slack is connected.
+ * Pairs sample call-sentiment points with short bodies that name a target
+ * use case and the problem that sparked it.
  */
 export function sampleGrowthCalls(
   points: Array<{ id: string; date: string; title: string }>,

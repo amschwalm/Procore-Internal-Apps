@@ -35,7 +35,8 @@ export function GrowthAreas({
               Growth Areas Identified
             </h2>
             <p className="mt-1 max-w-2xl text-sm text-white/50">
-              Where calls point to new agents, expansion, or an enterprise motion.
+              Target use cases the customer wants next — and the field problem
+              that made them ask. Ranked by how often they came up on calls.
             </p>
           </div>
           {hasCalls ? (
@@ -49,13 +50,13 @@ export function GrowthAreas({
 
       {!hasCalls ? (
         <div className="px-6 py-10 text-center text-sm text-white/45">
-          Sync Slack or load sample sentiment to scan call summaries for growth
-          opportunities.
+          Sync Slack or load sample sentiment to scan call summaries for future
+          use cases and the problems behind them.
         </div>
       ) : !hasMatches ? (
         <div className="px-6 py-10 text-center text-sm text-white/45">
-          None of the {summary.totalCalls} call summaries matched a growth-area
-          keyword.
+          None of the {summary.totalCalls} call summaries named a target use
+          case.
         </div>
       ) : (
         <>
@@ -79,8 +80,10 @@ export function GrowthAreas({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-medium text-white">{area.label}</span>
-                        <span className="text-[11px] text-white/40">{area.hint}</span>
                       </div>
+                      <p className="mt-0.5 text-[13px] leading-snug text-white/55">
+                        Interested because: {area.hint}
+                      </p>
                       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black">
                         <div
                           className="h-full rounded-full bg-pc-orange"
@@ -102,6 +105,9 @@ export function GrowthAreas({
                       {area.examples.map((example, exampleIndex) => (
                         <li key={`${example.date}-${exampleIndex}`} className="text-xs">
                           <div className="font-medium text-white/80">{example.title}</div>
+                          <p className="mt-0.5 text-white/55">
+                            Interested because: {example.problem}
+                          </p>
                           <p className="mt-0.5 leading-relaxed text-white/50">
                             {example.excerpt}
                           </p>
@@ -121,16 +127,16 @@ export function GrowthAreas({
                 onClick={() => setShowAll((current) => !current)}
                 className="text-xs text-pc-orange underline-offset-2 hover:underline"
               >
-                {showAll ? "Show fewer" : `Show all ${summary.areas.length} areas`}
+                {showAll ? "Show fewer" : `Show all ${summary.areas.length} use cases`}
               </button>
             </div>
           ) : null}
 
           <p className="border-t border-white/10 px-6 py-3 text-xs leading-relaxed text-white/45">
-            Scanned each Slack call-summary post with a local keyword list for
-            expansion language (new agents, enterprise rollout, integrations,
-            enablement). Not Avoma topics or an LLM. A call can match more than
-            one area; {summary.unmatchedCalls} call
+            Scanned each Slack call-summary post for a named use case plus a
+            field problem (for example, meetings because action items are lost
+            after OAC). Not Avoma topics or an LLM. A call can match more than
+            one use case; {summary.unmatchedCalls} call
             {summary.unmatchedCalls === 1 ? "" : "s"} had no clear match.
           </p>
         </>
