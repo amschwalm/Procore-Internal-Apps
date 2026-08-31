@@ -151,4 +151,27 @@ describe("sortCallSentimentPoints / sampleCallSentimentPoints", () => {
     expect(labels.has("positive")).toBe(true);
     expect(labels.has("negative")).toBe(true);
   });
+
+  it("spreads evenly across a given date range, first point at the start and last at the end", () => {
+    const points = sampleCallSentimentPoints(new Date("2026-08-30T00:00:00.000Z"), {
+      startDate: "2026-03-11",
+      endDate: "2026-08-19",
+    });
+    expect(points[0]?.date).toBe("2026-03-11");
+    expect(points[points.length - 1]?.date).toBe("2026-08-19");
+    for (let i = 1; i < points.length; i += 1) {
+      expect(points[i].date >= points[i - 1].date).toBe(true);
+    }
+  });
+
+  it("falls back to a wide default span ending at now when no range is given", () => {
+    const now = new Date("2026-08-30T00:00:00.000Z");
+    const points = sampleCallSentimentPoints(now);
+    const spanDays =
+      (new Date(`${points[points.length - 1].date}T00:00:00.000Z`).getTime() -
+        new Date(`${points[0].date}T00:00:00.000Z`).getTime()) /
+      86_400_000;
+    expect(spanDays).toBeGreaterThan(150);
+    expect(points[points.length - 1]?.date).toBe("2026-08-30");
+  });
 });

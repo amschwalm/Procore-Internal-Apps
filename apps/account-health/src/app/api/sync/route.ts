@@ -49,9 +49,21 @@ export async function POST(request: Request) {
     const job = await jobApi.start("call-sentiment-sample");
     await jobApi.addStep("sample", "Building sample call sentiment…");
     const next = await jobApi.read();
-    next.callSentiment = sampleCallSentimentPoints(new Date());
+    const introDates = next.snapshot.users
+      .map((user) => user.introDate)
+      .filter((date): date is string => Boolean(date))
+      .sort();
+    next.callSentiment = sampleCallSentimentPoints(new Date(), {
+      startDate: introDates[0],
+      endDate: introDates[introDates.length - 1],
+    });
     await jobApi.write(next);
-    await jobApi.addStep("sample", `Loaded ${next.callSentiment.length} sample calls.`);
+    await jobApi.addStep(
+      "sample",
+      introDates.length > 0
+        ? `Loaded ${next.callSentiment.length} sample calls spanning the account's ${introDates.length} known intro dates.`
+        : `Loaded ${next.callSentiment.length} sample calls.`,
+    );
     await jobApi.finish("success");
     const done = await jobApi.read();
     return NextResponse.json({ callSentiment: done.callSentiment, job: done.job ?? job });
