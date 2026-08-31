@@ -13,9 +13,9 @@ const PAD_LEFT = 86;
 const PAD_RIGHT = 40;
 const DATE_H = 28;
 const PAD_TOP = 8;
-const TRACK_GAP = 36;
-const SOLO_TRACK_H = 168;
-const PAIRED_TRACK_H = 132;
+const TRACK_GAP = 44;
+const SOLO_TRACK_H = 176;
+const PAIRED_TRACK_H = 140;
 const INTRO_H = 62;
 const MIN_USER_DOT_R = 5;
 const MAX_USER_DOT_R = 16;
@@ -73,6 +73,16 @@ function niceCeiling(value: number): number {
   const normalized = value / magnitude;
   const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
   return nice * magnitude;
+}
+
+/** Keep a single spike from flattening the rest of the series against the baseline. */
+function scaleMax(counts: number[]): number {
+  const sorted = counts.filter((count) => count > 0).sort((a, b) => a - b);
+  if (sorted.length === 0) return 1;
+  const max = sorted[sorted.length - 1]!;
+  const p90 = sorted[Math.max(0, Math.ceil(sorted.length * 0.9) - 1)]!;
+  const target = max > p90 * 2 ? p90 * 1.1 : max;
+  return niceCeiling(target);
 }
 
 type Hovered =
@@ -218,15 +228,15 @@ function TimelineChart({
     let introY = 0;
 
     if (enabled.sentiment) {
-      sentimentTop = y + 16;
-      sentimentBottom = y + sentimentH - 4;
+      sentimentTop = y + 18;
+      sentimentBottom = y + sentimentH;
       sentimentZeroY = (sentimentTop + sentimentBottom) / 2;
-      y += sentimentH + TRACK_GAP;
+      y = sentimentBottom + TRACK_GAP;
     }
     if (enabled.conversations) {
-      convTop = y + 16;
-      convBottom = y + convH - 4;
-      y += convH + (enabled.intros ? TRACK_GAP : 8);
+      convTop = y + 22;
+      convBottom = convTop + convH;
+      y = convBottom + (enabled.intros ? TRACK_GAP : 10);
     }
     if (enabled.intros) {
       introY = y + INTRO_H / 2;
@@ -240,8 +250,8 @@ function TimelineChart({
     const filledWeeks = enabled.conversations
       ? fillConversationWeeks(conversationWeeks, { startDate, endDate })
       : [];
-    const rawMax = Math.max(0, ...filledWeeks.map((week) => week.count));
-    const maxWeekCount = niceCeiling(rawMax);
+    const maxWeekCount = scaleMax(filledWeeks.map((week) => week.count));
+    const convRange = Math.max(1, convBottom - convTop);
 
     const sentimentPositioned = points.map((point) => ({
       point,
@@ -259,12 +269,11 @@ function TimelineChart({
 
     const weekPositioned = filledWeeks.map((point) => {
       const x = xFor(addDays(point.weekStart, 3));
-      const yValue =
-        convBottom - (maxWeekCount > 0 ? (point.count / maxWeekCount) * (convBottom - convTop) : 0);
+      const ratio = Math.min(1, point.count / maxWeekCount);
       return {
         point,
         x,
-        y: yValue,
+        y: convBottom - ratio * convRange,
       };
     });
 
@@ -405,7 +414,7 @@ function TimelineChart({
           <g>
             <text
               x={PAD_LEFT}
-              y={layout.convTop - 8}
+              y={layout.convTop - 10}
               className="fill-white/35"
               fontSize="10"
               textAnchor="start"
@@ -423,7 +432,7 @@ function TimelineChart({
             </text>
             <text
               x={WIDTH - 8}
-              y={layout.convBottom}
+              y={layout.convBottom + 3}
               className="fill-white/35"
               fontSize="10"
               textAnchor="end"
@@ -438,8 +447,15 @@ function TimelineChart({
               stroke="rgba(255,255,255,0.1)"
               strokeWidth={1}
             />
+            {layout.weekPositioned.length > 1 ? (
+              <path
+                d={`${weekPathD} L${layout.weekPositioned[layout.weekPositioned.length - 1]!.x},${layout.convBottom} L${layout.weekPositioned[0]!.x},${layout.convBottom} Z`}
+                fill="#ff5200"
+                fillOpacity={0.12}
+              />
+            ) : null}
             {layout.weekPositioned.length > 0 ? (
-              <path d={weekPathD} fill="none" stroke="#ff5200" strokeOpacity={0.85} strokeWidth={1.75} />
+              <path d={weekPathD} fill="none" stroke="#ff5200" strokeOpacity={0.95} strokeWidth={2} />
             ) : null}
             {layout.weekPositioned
               .filter((entry) => entry.point.count > 0)
@@ -476,7 +492,7 @@ function TimelineChart({
         {enabled.intros ? (
           <g>
             <text
-              x={8}
+              x={PAD_LEFT}
               y={layout.introY - 22}
               className="fill-white/35"
               fontSize="10"
