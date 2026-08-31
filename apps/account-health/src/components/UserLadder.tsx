@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   activeUserCount,
   conversionRate,
@@ -319,137 +319,175 @@ function UserTable({
   onHoverType: (type: EngagementType | null) => void;
   onClear: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (selected) setExpanded(true);
+  }, [selected]);
+
   const filtered = Boolean(selected || query.trim() || sort);
+  const summaryLabel = selected
+    ? `${users.length} / ${total} ${ENGAGEMENT_LABELS[selected]}`
+    : filtered
+      ? `${users.length} / ${total} filtered`
+      : `${total} users`;
+
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-3">
-        <div className="text-sm text-white/60">
-          <span className="text-white">{users.length}</span>
-          <span className="text-white/35"> / {total}</span>
-          {selected ? (
-            <span className="ml-2 text-white/70">{ENGAGEMENT_LABELS[selected]}</span>
-          ) : (
-            <span className="ml-2 text-white/35">all stages</span>
-          )}
-          {filtered ? (
-            <button
-              type="button"
-              onClick={onClear}
-              className="ml-2 text-xs text-pc-orange underline-offset-2 hover:underline"
-            >
-              Clear
-            </button>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="sr-only" htmlFor="stage-filter">
-            Filter by stage
-          </label>
-          <select
-            id="stage-filter"
-            value={selected ?? ""}
-            onChange={(event) =>
-              onStage((event.target.value || null) as EngagementType | null)
-            }
-            className="rounded-md border border-white/15 bg-black px-3 py-1.5 text-sm text-white outline-none focus:border-pc-orange"
+      <button
+        type="button"
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+        className="flex w-full items-center justify-between gap-3 px-6 py-3 text-left transition-colors hover:bg-white/5"
+      >
+        <span className="flex items-center gap-2 text-sm font-medium text-white">
+          <span
+            className={`inline-block font-mono text-xs text-pc-orange transition-transform ${
+              expanded ? "rotate-90" : ""
+            }`}
           >
-            <option value="">All stages</option>
-            {ENGAGEMENT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {ENGAGEMENT_LABELS[type]}
-              </option>
-            ))}
-          </select>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => onQuery(event.target.value)}
-            placeholder="Filter name, email, or stage"
-            className="w-56 rounded-md border border-white/15 bg-black px-3 py-1.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-pc-orange"
-          />
-        </div>
-      </div>
+            ▸
+          </span>
+          User list
+          <span className="text-white/35">· {summaryLabel}</span>
+        </span>
+        <span className="text-xs text-pc-orange underline-offset-2 hover:underline">
+          {expanded ? "Hide" : "Show"}
+        </span>
+      </button>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-[11px] uppercase tracking-[0.14em] text-pc-orange">
-            <tr className="border-b border-white/10">
-              <SortHeader label="User" column="user" sort={sort} onSort={onSort} className="px-6 py-3" />
-              <SortHeader label="Stage" column="stage" sort={sort} onSort={onSort} className="px-3 py-3" />
-              <SortHeader label="Intro" column="intro" sort={sort} onSort={onSort} className="px-3 py-3" />
-              <SortHeader label="First return" column="firstReturn" sort={sort} onSort={onSort} className="px-3 py-3" />
-              <SortHeader label="Last active" column="lastActive" sort={sort} onSort={onSort} className="px-3 py-3" />
-              <SortHeader label="Days in last 30" column="days" sort={sort} onSort={onSort} className="px-3 py-3" />
-              <SortHeader label="Chats in last 30" column="chats" sort={sort} onSort={onSort} className="px-3 py-3" />
-              <SortHeader label="Chats in last 90" column="chats90" sort={sort} onSort={onSort} className="px-3 py-3" />
-              <SortHeader label="Days to conversion" column="conversion" sort={sort} onSort={onSort} className="px-6 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-6 py-10 text-center text-sm text-white/45">
-                  No users in this view.
-                </td>
-              </tr>
-            ) : (
-              users.map((user) => {
-                const dimmed = active !== null && user.type !== active;
-                return (
-                  <tr
-                    key={user.id}
-                    onMouseEnter={() => onHoverType(user.type)}
-                    onMouseLeave={() => onHoverType(null)}
-                    className={`border-b border-white/10 transition-opacity ${
-                      dimmed ? "opacity-30" : "opacity-100"
-                    }`}
-                  >
-                    <td className="px-6 py-3">
-                      <div className="font-medium text-white">{user.name ?? user.id}</div>
-                      <div className="text-xs text-white/45">{user.email ?? "—"}</div>
-                    </td>
-                    <td className="px-3 py-3">
-                      {user.type === "non_user" ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-2 py-0.5 text-xs text-white/70">
-                          {ENGAGEMENT_LABELS[user.type]}
-                        </span>
-                      ) : (
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${HEALTH_TONES[user.type]} ${HEALTH_TONE_INK[user.type]}`}
-                        >
-                          {ENGAGEMENT_LABELS[user.type]}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 font-mono text-xs text-white/80">
-                      {formatDay(user.introDate)}
-                    </td>
-                    <td className="px-3 py-3 font-mono text-xs text-white/80">
-                      {formatDay(user.firstReturnDate)}
-                    </td>
-                    <td className="px-3 py-3 font-mono text-xs text-white/80">
-                      {formatDay(user.lastActiveDate)}
-                    </td>
-                    <td className="max-w-56 px-3 py-3 font-mono text-xs text-white/60">
-                      <span className="text-white">{user.activeDays30}</span>
-                      <span className="ml-2 text-white/45">{formatDays(user.activeDates30 ?? [])}</span>
-                    </td>
-                    <td className="px-3 py-3 font-mono text-xs text-white">
-                      {user.chats30 ?? "—"}
-                    </td>
-                    <td className="px-3 py-3 font-mono text-xs text-white">
-                      {user.chats90 ?? "—"}
-                    </td>
-                    <td className="px-6 py-3 font-mono text-xs text-white" title={user.conversionEntryDate ? `Entered on ${formatDay(user.conversionEntryDate)}` : undefined}>
-                      {user.daysToConversion ?? "—"}
+      {expanded ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-6 py-3">
+            <div className="text-sm text-white/60">
+              <span className="text-white">{users.length}</span>
+              <span className="text-white/35"> / {total}</span>
+              {selected ? (
+                <span className="ml-2 text-white/70">{ENGAGEMENT_LABELS[selected]}</span>
+              ) : (
+                <span className="ml-2 text-white/35">all stages</span>
+              )}
+              {filtered ? (
+                <button
+                  type="button"
+                  onClick={onClear}
+                  className="ml-2 text-xs text-pc-orange underline-offset-2 hover:underline"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="sr-only" htmlFor="stage-filter">
+                Filter by stage
+              </label>
+              <select
+                id="stage-filter"
+                value={selected ?? ""}
+                onChange={(event) =>
+                  onStage((event.target.value || null) as EngagementType | null)
+                }
+                className="rounded-md border border-white/15 bg-black px-3 py-1.5 text-sm text-white outline-none focus:border-pc-orange"
+              >
+                <option value="">All stages</option>
+                {ENGAGEMENT_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {ENGAGEMENT_LABELS[type]}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => onQuery(event.target.value)}
+                placeholder="Filter name, email, or stage"
+                className="w-56 rounded-md border border-white/15 bg-black px-3 py-1.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-pc-orange"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-[11px] uppercase tracking-[0.14em] text-pc-orange">
+                <tr className="border-b border-white/10">
+                  <SortHeader label="User" column="user" sort={sort} onSort={onSort} className="px-6 py-3" />
+                  <SortHeader label="Stage" column="stage" sort={sort} onSort={onSort} className="px-3 py-3" />
+                  <SortHeader label="Intro" column="intro" sort={sort} onSort={onSort} className="px-3 py-3" />
+                  <SortHeader label="First return" column="firstReturn" sort={sort} onSort={onSort} className="px-3 py-3" />
+                  <SortHeader label="Last active" column="lastActive" sort={sort} onSort={onSort} className="px-3 py-3" />
+                  <SortHeader label="Days in last 30" column="days" sort={sort} onSort={onSort} className="px-3 py-3" />
+                  <SortHeader label="Chats in last 30" column="chats" sort={sort} onSort={onSort} className="px-3 py-3" />
+                  <SortHeader label="Chats in last 90" column="chats90" sort={sort} onSort={onSort} className="px-3 py-3" />
+                  <SortHeader label="Days to conversion" column="conversion" sort={sort} onSort={onSort} className="px-6 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-6 py-10 text-center text-sm text-white/45">
+                      No users in this view.
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                ) : (
+                  users.map((user) => {
+                    const dimmed = active !== null && user.type !== active;
+                    return (
+                      <tr
+                        key={user.id}
+                        onMouseEnter={() => onHoverType(user.type)}
+                        onMouseLeave={() => onHoverType(null)}
+                        className={`border-b border-white/10 transition-opacity ${
+                          dimmed ? "opacity-30" : "opacity-100"
+                        }`}
+                      >
+                        <td className="px-6 py-3">
+                          <div className="font-medium text-white">{user.name ?? user.id}</div>
+                          <div className="text-xs text-white/45">{user.email ?? "—"}</div>
+                        </td>
+                        <td className="px-3 py-3">
+                          {user.type === "non_user" ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-2 py-0.5 text-xs text-white/70">
+                              {ENGAGEMENT_LABELS[user.type]}
+                            </span>
+                          ) : (
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${HEALTH_TONES[user.type]} ${HEALTH_TONE_INK[user.type]}`}
+                            >
+                              {ENGAGEMENT_LABELS[user.type]}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 font-mono text-xs text-white/80">
+                          {formatDay(user.introDate)}
+                        </td>
+                        <td className="px-3 py-3 font-mono text-xs text-white/80">
+                          {formatDay(user.firstReturnDate)}
+                        </td>
+                        <td className="px-3 py-3 font-mono text-xs text-white/80">
+                          {formatDay(user.lastActiveDate)}
+                        </td>
+                        <td className="max-w-56 px-3 py-3 font-mono text-xs text-white/60">
+                          <span className="text-white">{user.activeDays30}</span>
+                          <span className="ml-2 text-white/45">{formatDays(user.activeDates30 ?? [])}</span>
+                        </td>
+                        <td className="px-3 py-3 font-mono text-xs text-white">
+                          {user.chats30 ?? "—"}
+                        </td>
+                        <td className="px-3 py-3 font-mono text-xs text-white">
+                          {user.chats90 ?? "—"}
+                        </td>
+                        <td className="px-6 py-3 font-mono text-xs text-white" title={user.conversionEntryDate ? `Entered on ${formatDay(user.conversionEntryDate)}` : undefined}>
+                          {user.daysToConversion ?? "—"}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
