@@ -234,7 +234,7 @@ function TimelineChart({
       y = sentimentBottom + TRACK_GAP;
     }
     if (enabled.conversations) {
-      convTop = y + 22;
+      convTop = y + 28;
       convBottom = convTop + convH;
       y = convBottom + (enabled.intros ? TRACK_GAP : 10);
     }
@@ -414,7 +414,7 @@ function TimelineChart({
           <g>
             <text
               x={PAD_LEFT}
-              y={layout.convTop - 10}
+              y={layout.convTop - 14}
               className="fill-white/35"
               fontSize="10"
               textAnchor="start"
@@ -447,13 +447,6 @@ function TimelineChart({
               stroke="rgba(255,255,255,0.1)"
               strokeWidth={1}
             />
-            {layout.weekPositioned.length > 1 ? (
-              <path
-                d={`${weekPathD} L${layout.weekPositioned[layout.weekPositioned.length - 1]!.x},${layout.convBottom} L${layout.weekPositioned[0]!.x},${layout.convBottom} Z`}
-                fill="#ff5200"
-                fillOpacity={0.12}
-              />
-            ) : null}
             {layout.weekPositioned.length > 0 ? (
               <path d={weekPathD} fill="none" stroke="#ff5200" strokeOpacity={0.95} strokeWidth={2} />
             ) : null}
