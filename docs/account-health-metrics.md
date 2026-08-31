@@ -202,7 +202,7 @@ Transcripts have **no account ID**. Matching from title + transcript is a separa
 
 **Avoma specifically** has native filters we can use once we have a key: `GET /v1/meetings/` (and `/v1/calls/`) take `attendee_emails` (comma-separated, OR-matched — works today since every account here already has a known set of customer emails) and `crm_account_ids` (needs Avoma↔CRM sync). Sentiment is native too: `GET /v1/meeting_sentiments/?meeting_uuid=...` returns time-windowed scores per meeting — no model to build, but it's one request per meeting on top of the list call, and the API caps at 60 requests/minute with a 60s timeout per request.
 
-**Interim path (shipped, no Avoma key needed):** the Timeline reads a human-pushed Slack channel of AI call-summary posts (Avoma/Gong meeting-notes bot → Slack) instead. Each post's "Mood" paragraph is scored with a local keyword lexicon (`src/lib/call-sentiment.ts`) — same "why not the vendor API" reasoning as Areas of Interest: no sentiment model exists in this app, and standing one up needs an LLM key and a cost/data-sharing decision, so a deterministic heuristic ships first. The same posts are scanned for **Growth Areas Identified** (`src/lib/growth-signals.ts`): expansion language around new agents, enterprise rollout, integrations, workflows, and enablement. Swapping in Avoma's own scores later only changes where `CallSentimentPoint.score` comes from, not the widget or the storage shape.
+**Interim path (shipped, no Avoma key needed):** the Timeline reads a human-pushed Slack channel of AI call-summary posts (Avoma/Gong meeting-notes bot → Slack) instead. Each post's "Mood" paragraph is scored with a local keyword lexicon (`src/lib/call-sentiment.ts`) — same "why not the vendor API" reasoning as Areas of Interest: no sentiment model exists in this app, and standing one up needs an LLM key and a cost/data-sharing decision, so a deterministic heuristic ships first. The same posts are scanned for **Growth Areas Identified** (`src/lib/growth-signals.ts`): target use cases the customer wants next (meetings, RFIs, punch list, …) paired with the field problem that made them ask — not enterprise-motion themes like seats or SSO. Swapping in Avoma's own scores later only changes where `CallSentimentPoint.score` comes from, not the widget or the storage shape.
 
 ---
 
@@ -427,7 +427,9 @@ deltaPct  = delta / prior30   (null when prior30 = 0)
 
 Weekly series: Monday-start ISO week buckets of the same completed conversations, plotted on the Timeline alongside call sentiment and new-user intros (each series can be toggled independently).
 
-**Areas of Interest** (formerly Tool Relevance) ranks Procore tools mentioned in uploaded Q&A text. **Growth Areas Identified** ranks expansion themes parsed from Slack call summaries.
+**Areas of Interest** (formerly Tool Relevance) ranks Procore tools mentioned in uploaded Q&A text. **Growth Areas Identified** ranks target use cases parsed from Slack call summaries, each with the problem the customer named (for example: interested in Meetings because action items are lost after OAC).
+
+An account named **Vortex Construction** is the internal test environment: every stored user, directory row, call title, and growth excerpt is rewritten to synthetic `User 01` / `user01@internal.test` identities so no customer emails or names appear. Other accounts (for example Grunley) keep real people.
 
 ---
 

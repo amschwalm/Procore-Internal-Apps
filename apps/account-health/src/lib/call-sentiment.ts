@@ -222,12 +222,12 @@ export function sortCallSentimentPoints(points: CallSentimentPoint[]): CallSenti
 }
 
 const SAMPLE_TITLES = [
-  "Datagrid × FEMS — On-Site Implementation Review",
-  "Grunley — Weekly Sync",
-  "Grunley — Submittal Workflow Follow-up",
-  "Grunley — QBR Prep",
-  "Grunley — Escalation Review",
-  "Grunley — Renewal Check-in",
+  "Weekly CS check-in",
+  "QBR prep",
+  "Document search follow-up",
+  "Executive sponsor call",
+  "Project kickoff review",
+  "Adoption workshop",
 ];
 
 const SAMPLE_MOODS: Array<{ score: number; label: SentimentLabel; moodSummary: string }> = [

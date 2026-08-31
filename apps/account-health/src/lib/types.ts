@@ -120,6 +120,8 @@ export type MetricsSnapshot = {
 export type AccountRecord = {
   id: string;
   name: string;
+  /** Internal test account — persist and display only synthetic people. */
+  anonymized?: boolean;
   createdAt: string;
   connections: Connections;
   snapshot: MetricsSnapshot;
@@ -137,6 +139,7 @@ export type PublicAccount = {
   source: MetricsSnapshot["source"];
   computedAt: string | null;
   current: boolean;
+  anonymized: boolean;
 };
 
 export type PublicSourceState = {

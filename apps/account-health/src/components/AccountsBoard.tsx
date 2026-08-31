@@ -47,7 +47,9 @@ export function AccountsBoard({ initial }: { initial: PublicAccount[] }) {
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/50">
           Each account has its own Datagrid key, insights export, and user ladder.
-          Create one per customer, then switch from the header.
+          Create one per customer, then switch from the header. Name an account
+          Vortex Construction to keep it fully anonymized as an internal test
+          environment — no customer emails or names are stored or shown.
         </p>
       </div>
 
@@ -96,11 +98,18 @@ export function AccountsBoard({ initial }: { initial: PublicAccount[] }) {
               >
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="text-[15px] font-medium text-white">{account.name}</h2>
-                  {account.current ? (
-                    <span className="rounded-full border border-pc-orange px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-pc-orange">
-                      Current
-                    </span>
-                  ) : null}
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+                    {account.anonymized ? (
+                      <span className="rounded-full border border-white/25 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-white/55">
+                        Anonymized
+                      </span>
+                    ) : null}
+                    {account.current ? (
+                      <span className="rounded-full border border-pc-orange px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-pc-orange">
+                        Current
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 <p className="mt-2 text-sm text-white/50">
                   {account.userCount} users

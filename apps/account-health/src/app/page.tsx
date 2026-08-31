@@ -31,6 +31,11 @@ export default async function OverviewPage() {
           <p className="text-[11px] uppercase tracking-[0.18em] text-pc-orange">Overview</p>
           <h1 className="mt-1 text-2xl font-medium tracking-tight text-white">
             {state.accountName ?? "Account health"}
+            {state.anonymized ? (
+              <span className="ml-3 align-middle rounded-full border border-pc-orange/50 px-2 py-0.5 text-[10px] font-normal uppercase tracking-[0.16em] text-pc-orange">
+                Internal test · anonymized
+              </span>
+            ) : null}
           </h1>
           <p className="mt-2 text-sm text-white/50">
             {state.accountId
