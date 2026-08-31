@@ -58,9 +58,9 @@ export default async function OverviewPage() {
       </div>
 
       <div className="space-y-6">
+        <CallSentimentTimeline key={state.accountId ?? "none"} points={state.callSentiment} />
         <UserLadder key={state.accountId ?? "none"} snapshot={snapshot} />
         <ToolRelevance key={state.accountId ?? "none"} summary={snapshot.toolRelevance} />
-        <CallSentimentTimeline key={state.accountId ?? "none"} points={state.callSentiment} />
       </div>
     </AppShell>
   );
