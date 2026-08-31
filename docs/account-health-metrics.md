@@ -382,13 +382,13 @@ For each directory row:
 
 Rate limits are per teamspace. Message paging is the expensive path.
 
-### 8.10 Time to Conversion (proposed dashboard metric)
+### 8.10 Time to Conversion
 
-**Not implemented yet.** The Overview page wireframes this as a "Proposed" tile so CS/PS can react to the definition before we build it.
+**Implemented.** Shipped as the fourth Overview KPI tile and a sortable "Days to conversion" table column (`src/lib/lifecycle.ts`: `findConversionEntryDate`, `summarizeConversionTiming`).
 
 **Converted** = Sticky or Advanced (the two rungs with ≥5 active days in a trailing 30). Both require the same entry gate — ≥5 active days — so the conversion moment does not depend on the Sticky/Advanced chat-count split.
 
-Proposed formula, per user:
+Formula, per user:
 
 ```
 entry_date(user) = earliest date d in the user's active dates such that
@@ -396,19 +396,19 @@ entry_date(user) = earliest date d in the user's active dates such that
 time_to_conversion(user) = entry_date(user) - intro_date(user), in days
 ```
 
+Computed by walking each user's full (all-time) sorted active dates with a two-pointer sliding window — the same trailing-30 rule already used for `activeDays30`, evaluated historically instead of only at "now." `conversionEntryDate` / `daysToConversion` are `null` until a user first reaches that gate; they stay set afterward even if the user later goes quiet, since this is a one-time milestone (like Basic), not a current state.
+
 Account-level rollup:
 
 - **Median** `time_to_conversion` across users who have converted (skip mean; a few very fast or very slow users would distort it).
-- Report alongside **% of eligible users converted by day 30 / 60 / 90** (eligible = intro date is at least that many days in the past), since median alone hides right-censored users who have not converted yet or never will.
+- **% of eligible users converted by day 30 / 60 / 90** (eligible = intro date is at least that many days in the past), since median alone hides right-censored users who have not converted yet or never will. Shown in the KPI tile hint; all three windows are available from `summarizeConversionTiming`.
 
 Feasibility:
 
 | Path | Status | Why |
 | --- | --- | --- |
-| Insights CSV/Excel upload | **Ready** | We already hold each person's full history of completed Q&A rows and can replay it day by day to find `entry_date`. No new data needed. |
-| Datagrid API only | **Blocked** | Same author gap as U1–U7 person-level assignment (no `user_id` on conversations/messages). Only the account-as-actor T-Sticky/T-Advanced clocks in [§8.7](#87-time-to-stage) apply. |
-
-Implementation sketch (insights path): for each user's sorted active dates, walk forward and, for each date, count active dates in the trailing 30 ending there; stop at the first date where that count reaches 5. This is the same trailing-window rule already used for `activeDays30`, just evaluated historically instead of only at "now."
+| Insights CSV/Excel upload | **Ready** | We hold each person's full history of completed Q&A rows and replay it day by day to find `entry_date`. |
+| Datagrid API only | **Blocked** | Same author gap as U1–U7 person-level assignment (no `user_id` on conversations/messages). Every user computes to Non-User with no active dates, so `daysToConversion` stays `null` for the whole account. Only the account-as-actor T-Sticky/T-Advanced clocks in [§8.7](#87-time-to-stage) apply. |
 
 ---
 

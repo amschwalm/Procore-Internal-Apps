@@ -9,7 +9,8 @@ export type UserSortKey =
   | "lastActive"
   | "days"
   | "chats"
-  | "chats90";
+  | "chats90"
+  | "conversion";
 
 export type UserSortDirection = "asc" | "desc";
 
@@ -31,7 +32,10 @@ function compareNullableDate(a: string | null, b: string | null): number {
   return a.localeCompare(b);
 }
 
-function compareNullableNumber(a: number | undefined, b: number | undefined): number {
+function compareNullableNumber(
+  a: number | null | undefined,
+  b: number | null | undefined,
+): number {
   const left = a ?? -1;
   const right = b ?? -1;
   return left - right;
@@ -87,6 +91,9 @@ export function sortUsers(users: ClassifiedUser[], sort: UserSort | null): Class
         break;
       case "chats90":
         delta = compareNullableNumber(a.chats90, b.chats90);
+        break;
+      case "conversion":
+        delta = compareNullableNumber(a.daysToConversion, b.daysToConversion);
         break;
       default:
         delta = 0;

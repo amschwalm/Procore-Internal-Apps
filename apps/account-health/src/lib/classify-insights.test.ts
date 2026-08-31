@@ -6,8 +6,8 @@ import { parseInsightsFile, parseInsightsTable, tableFromCsv } from "./insights-
 const HEADER =
   "Email,Time,question,answer,Time,phoenixTrace,A. Uniques of [Deprecated] Agent Conversation: Question and Answer (Answer not recorded),B. Uniques of Agent Conversation Question & Answer";
 
-function row(email: string, iso: string): string {
-  return `${email},"Jan 1, 2026",q,a,${iso},undefined,0,1`;
+function row(email: string, iso: string, question = "q", answer = "a"): string {
+  return `${email},"Jan 1, 2026",${question},${answer},${iso},undefined,0,1`;
 }
 
 const REAL_FILE =
@@ -46,6 +46,13 @@ describe("snapshotFromInsights", () => {
       advanced: 0,
     });
     expect(snapshot.attributionNote).toContain("more than 100");
+
+    const stickyUser = snapshot.users.find((user) => user.email === "stick@acme.test");
+    expect(stickyUser?.conversionEntryDate).toBe("2026-08-10");
+    expect(stickyUser?.daysToConversion).toBe(70);
+
+    const passiveUser = snapshot.users.find((user) => user.email === "pass@acme.test");
+    expect(passiveUser?.daysToConversion).toBeNull();
   });
 
   it("advanced when a person has more than 100 Q&A rows in 30 days", () => {
@@ -58,6 +65,8 @@ describe("snapshotFromInsights", () => {
     expect(snapshot.counts.advanced).toBe(1);
     expect(snapshot.users[0]?.chats30).toBe(101);
     expect(snapshot.users[0]?.chats90).toBe(101);
+    expect(snapshot.users[0]?.conversionEntryDate).toBe("2026-08-05");
+    expect(snapshot.users[0]?.daysToConversion).toBe(65);
   });
 
   it("marks directory people who are missing from the file as Non-User", () => {
@@ -73,6 +82,30 @@ describe("snapshotFromInsights", () => {
     expect(snapshot.counts.churned).toBe(1);
     expect(snapshot.provisionedUsers).toBe(2);
     expect(snapshot.users.find((user) => user.email === "quiet@acme.test")?.name).toBe("Quiet");
+  });
+
+  it("attaches a tool relevance summary computed from every row's question and answer text", () => {
+    const csv = [
+      HEADER,
+      row("a@acme.test", "2026-06-01T10:00:00", "how many RFIs are open", "12 RFIs are open"),
+      row("a@acme.test", "2026-06-02T10:00:00", "draft an RFI for the wall", ""),
+      row("b@acme.test", "2026-06-01T10:00:00", "what spec section covers soil cells", "section 32"),
+      row("c@acme.test", "2026-06-01T10:00:00", "hello there", "how can I help"),
+    ].join("\n");
+
+    const snapshot = snapshotFromInsights(parseInsightsTable(tableFromCsv(csv)), { now });
+    expect(snapshot.toolRelevance?.totalRows).toBe(4);
+    expect(snapshot.toolRelevance?.matchedRows).toBe(3);
+    expect(snapshot.toolRelevance?.unmatchedRows).toBe(1);
+    expect(snapshot.toolRelevance?.tools[0]).toMatchObject({ toolId: "rfis", count: 2 });
+  });
+
+  it("counts every uploaded row toward toolRelevance, even without a matching keyword", () => {
+    const csv = [HEADER, row("a@acme.test", "2026-06-01T10:00:00")].join("\n");
+    const snapshot = snapshotFromInsights(parseInsightsTable(tableFromCsv(csv)), { now });
+    expect(snapshot.toolRelevance?.totalRows).toBe(1);
+    expect(snapshot.toolRelevance?.matchedRows).toBe(0);
+    expect(snapshot.toolRelevance?.tools).toEqual([]);
   });
 });
 
@@ -98,5 +131,22 @@ describe("Grunley insights export", () => {
     expect(sticky.every((user) => (user.chats30 ?? 0) >= user.activeDays30)).toBe(true);
     expect(Math.max(...sticky.map((user) => user.chats30 ?? 0))).toBeGreaterThan(0);
     expect(sticky.every((user) => (user.chats90 ?? 0) >= (user.chats30 ?? 0))).toBe(true);
+    expect(sticky.every((user) => user.daysToConversion !== null)).toBe(true);
+
+    expect(snapshot.toolRelevance?.totalRows).toBe(1125);
+    expect(snapshot.toolRelevance?.matchedRows).toBe(948);
+    expect(snapshot.toolRelevance?.unmatchedRows).toBe(177);
+    expect(snapshot.toolRelevance?.tools[0]).toMatchObject({
+      toolId: "specifications",
+      count: 252,
+    });
+    const topFive = snapshot.toolRelevance?.tools.slice(0, 5).map((tool) => tool.toolId);
+    expect(topFive).toEqual([
+      "specifications",
+      "submittals",
+      "drawings",
+      "commitments",
+      "rfis",
+    ]);
   });
 });

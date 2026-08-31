@@ -22,6 +22,8 @@ describe("parseInsightsTable", () => {
     expect(parsed.events[0]?.createdAt.toISOString()).toBe("2026-08-19T06:17:10.000Z");
     expect(parsed.events.every((event) => event.completed)).toBe(true);
     expect(parsed.hasAgentColumn).toBe(false);
+    expect(parsed.events[0]?.question).toBe("what is waterproofing?");
+    expect(parsed.events[0]?.answer).toBe("A short answer");
   });
 });
 

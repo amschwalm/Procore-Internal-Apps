@@ -30,5 +30,28 @@ describe("snapshotFromOrg", () => {
     expect(snapshot.orgPower).toBe(true);
     expect(snapshot.attributionNote).toContain("org-scoped");
     expect(snapshot.attributionNote).toContain("1 of 2");
+    expect(snapshot.users[0]?.daysToConversion).toBeNull();
+    expect(snapshot.users[0]?.conversionEntryDate).toBeNull();
+  });
+
+  it("computes daysToConversion when the key attributes conversations", () => {
+    const now = new Date("2026-08-30T12:00:00.000Z");
+    const conversations = [8, 6, 4, 2, 1].map((daysAgo) => ({
+      id: `c-${daysAgo}`,
+      created_at: new Date(now.getTime() - daysAgo * 86_400_000).toISOString(),
+      participated_agent_ids: ["agent-a"],
+      authorId: "u1",
+      authorField: "user_id",
+      completed: true,
+    }));
+    const snapshot = snapshotFromOrg(
+      org({ conversations, discoveredAuthorFields: ["user_id"] }),
+      now,
+    );
+    expect(snapshot.attribution).toBe("user");
+    const user = snapshot.users.find((u) => u.id === "u1");
+    expect(user?.type).toBe("sticky");
+    expect(user?.daysToConversion).not.toBeNull();
+    expect(user?.conversionEntryDate).toBe(user?.lastActiveDate);
   });
 });

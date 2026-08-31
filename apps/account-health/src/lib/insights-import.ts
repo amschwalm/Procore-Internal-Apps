@@ -6,6 +6,8 @@ export type InsightsEvent = {
   createdAt: Date;
   agentIds: string[];
   completed: boolean;
+  question: string;
+  answer: string;
 };
 
 export type InsightsParseResult = {
@@ -133,6 +135,8 @@ export function parseInsightsTable(table: string[][]): InsightsParseResult {
       createdAt,
       agentIds: agent && agent !== "undefined" ? [agent] : [],
       completed,
+      question,
+      answer,
     });
   }
 
