@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { CallSentimentTimeline } from "@/components/CallSentimentTimeline";
 import { OverviewActions } from "@/components/OverviewActions";
 import { ToolRelevance } from "@/components/ToolRelevance";
 import { UserLadder } from "@/components/UserLadder";
@@ -50,6 +51,7 @@ export default async function OverviewPage() {
           <OverviewActions
             key={state.accountId}
             hasDatagrid={Boolean(state.connections.datagrid?.apiKey)}
+            hasSlack={Boolean(state.connections.slack?.botToken && state.connections.slack?.channelId)}
             initialJob={state.job ?? emptyJob()}
           />
         ) : null}
@@ -58,6 +60,7 @@ export default async function OverviewPage() {
       <div className="space-y-6">
         <UserLadder key={state.accountId ?? "none"} snapshot={snapshot} />
         <ToolRelevance key={state.accountId ?? "none"} summary={snapshot.toolRelevance} />
+        <CallSentimentTimeline key={state.accountId ?? "none"} points={state.callSentiment} />
       </div>
     </AppShell>
   );

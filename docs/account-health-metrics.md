@@ -200,6 +200,10 @@ Useful later: owner, segment, ARR, stage, renewal date, implementation kickoff, 
 
 Transcripts have **no account ID**. Matching from title + transcript is a separate, probabilistic pipeline. Not a TTV dependency.
 
+**Avoma specifically** has native filters we can use once we have a key: `GET /v1/meetings/` (and `/v1/calls/`) take `attendee_emails` (comma-separated, OR-matched — works today since every account here already has a known set of customer emails) and `crm_account_ids` (needs Avoma↔CRM sync). Sentiment is native too: `GET /v1/meeting_sentiments/?meeting_uuid=...` returns time-windowed scores per meeting — no model to build, but it's one request per meeting on top of the list call, and the API caps at 60 requests/minute with a 60s timeout per request.
+
+**Interim path (shipped, no Avoma key needed):** the Customer Sentiment widget reads a human-pushed Slack channel of AI call-summary posts (Avoma/Gong meeting-notes bot → Slack) instead. Each post's "Mood" paragraph is scored with a local keyword lexicon (`src/lib/call-sentiment.ts`) — same "why not the vendor API" reasoning as Tool Relevance: no sentiment model exists in this app, and standing one up needs an LLM key and a cost/data-sharing decision, so a deterministic heuristic ships first. Swapping in Avoma's own scores later only changes where `CallSentimentPoint.score` comes from, not the widget or the storage shape.
+
 ---
 
 ## 7. Open questions that still change formulas

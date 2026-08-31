@@ -51,8 +51,9 @@ export const SOURCE_CATALOG: Array<
   {
     id: "slack",
     label: "Slack",
-    purpose: "Channel with call or meeting summaries. Stored now, not used by a widget yet.",
-    usedNow: false,
+    purpose:
+      "Channel where AI call summaries get posted. Powers the Customer Sentiment timeline by reading each post's Mood section.",
+    usedNow: true,
     fields: [
       { name: "botToken", label: "Bot token", type: "password", placeholder: "xoxb-…" },
       { name: "channelId", label: "Channel ID", type: "text", placeholder: "C0…" },
@@ -114,15 +115,20 @@ export function publicSources(connections: Connections): PublicSourceState[] {
       filled: Boolean(record[field.name]),
     }));
     const connected = source.fields.every((field) => Boolean(record[field.name]));
-    const datagrid = source.id === "datagrid" ? connections.datagrid : undefined;
+    const validated =
+      source.id === "datagrid"
+        ? connections.datagrid
+        : source.id === "slack"
+          ? connections.slack
+          : undefined;
 
     return {
       ...source,
       connected,
       last4: last4(secret),
-      lastValidatedAt: datagrid?.lastValidatedAt ?? null,
-      identityLabel: datagrid?.identityLabel ?? null,
-      lastError: datagrid?.lastError ?? null,
+      lastValidatedAt: validated?.lastValidatedAt ?? null,
+      identityLabel: validated?.identityLabel ?? null,
+      lastError: validated?.lastError ?? null,
       fields: filledFields,
     };
   });

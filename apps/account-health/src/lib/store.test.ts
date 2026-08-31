@@ -58,6 +58,7 @@ describe("migrateWorkspace", () => {
         failedStep: null,
       },
       directory: [],
+      callSentiment: [],
     };
     const workspace = migrateWorkspace({
       currentAccountId: "acc-1",
@@ -95,6 +96,7 @@ describe("publicAccounts", () => {
             failedStep: null,
           },
           directory: [],
+          callSentiment: [],
         },
         {
           id: "a",
@@ -112,6 +114,7 @@ describe("publicAccounts", () => {
             failedStep: null,
           },
           directory: [],
+          callSentiment: [],
         },
       ],
     });
@@ -138,6 +141,7 @@ describe("applyAccountState", () => {
           snapshot: alphaSnapshot,
           job: emptyAccountState().job,
           directory: [],
+          callSentiment: [],
         },
         {
           id: "beta",
@@ -147,6 +151,7 @@ describe("applyAccountState", () => {
           snapshot: betaSnapshot,
           job: emptyAccountState().job,
           directory: [],
+          callSentiment: [],
         },
       ],
     };
@@ -157,6 +162,7 @@ describe("applyAccountState", () => {
       snapshot: { ...alphaSnapshot, provisionedUsers: 12 },
       job: emptyAccountState().job,
       directory: [],
+      callSentiment: [],
     });
     expect(next.currentAccountId).toBe("beta");
     expect(next.accounts.find((account) => account.id === "alpha")?.snapshot.provisionedUsers).toBe(12);

@@ -3,7 +3,8 @@ import type { SyncJob, SyncStepLevel } from "./types";
 
 export function bindJob(accountId: string) {
   return {
-    start: (mode: "sample" | "datagrid" | "upload") => startJob(mode, accountId),
+    start: (mode: "sample" | "datagrid" | "upload" | "slack" | "call-sentiment-sample") =>
+      startJob(mode, accountId),
     addStep: (step: string, message: string, level: SyncStepLevel = "info") =>
       addStep(step, message, level, accountId),
     finish: (status: "success" | "error", extras?: { error?: string; failedStep?: string }) =>
@@ -14,7 +15,7 @@ export function bindJob(accountId: string) {
 }
 
 export async function startJob(
-  mode: "sample" | "datagrid" | "upload",
+  mode: "sample" | "datagrid" | "upload" | "slack" | "call-sentiment-sample",
   accountId?: string | null,
 ): Promise<SyncJob> {
   const state = await readState(accountId);
