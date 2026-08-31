@@ -9,14 +9,16 @@ import {
 } from "@/lib/lifecycle";
 
 const WIDTH = 960;
-const PAD_X = 40;
+const PAD_LEFT = 86;
+const PAD_RIGHT = 40;
 const DATE_H = 28;
-const PAD_TOP = 18;
-const SENTIMENT_H = 140;
-const CONV_H = 92;
-const INTRO_H = 58;
+const PAD_TOP = 8;
+const TRACK_GAP = 36;
+const SOLO_TRACK_H = 168;
+const PAIRED_TRACK_H = 132;
+const INTRO_H = 62;
 const MIN_USER_DOT_R = 5;
-const MAX_USER_DOT_R = 18;
+const MAX_USER_DOT_R = 16;
 
 type SeriesId = "sentiment" | "intros" | "conversations";
 
@@ -63,6 +65,14 @@ function formatPointDate(value: string): string {
 
 function userDotRadius(count: number): number {
   return Math.max(MIN_USER_DOT_R, Math.min(MAX_USER_DOT_R, 4 + Math.sqrt(count) * 3));
+}
+
+function niceCeiling(value: number): number {
+  if (value <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const normalized = value / magnitude;
+  const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return nice * magnitude;
 }
 
 type Hovered =
@@ -152,9 +162,9 @@ export function AccountTimeline({
         Sentiment dots are parsed from each Slack call-summary post&apos;s Mood paragraph with a
         local keyword classifier — not Avoma&apos;s own sentiment API. Score runs −1 (very
         negative) to +1 (very positive). New-user dots come from each person&apos;s first completed
-        conversation; a bigger dot means more people started that day. Weekly bars are completed
-        Q&amp;As bucketed by ISO week (Monday start). Turn any series off to read the others on
-        their own.
+        conversation; a bigger dot means more people started that day. The conversation line is
+        completed Q&amp;As bucketed by ISO week (Monday start). Turn any series off to read the
+        others on their own.
       </p>
     </section>
   );
@@ -190,10 +200,14 @@ function TimelineChart({
     const minTime = Math.min(...allTimes);
     const maxTime = Math.max(...allTimes);
     const span = Math.max(maxTime - minTime, 1);
-    const plotWidth = WIDTH - PAD_X * 2;
+    const plotWidth = WIDTH - PAD_LEFT - PAD_RIGHT;
     const single = maxTime === minTime;
     const xFor = (date: string) =>
-      single ? WIDTH / 2 : PAD_X + ((timeOf(date) - minTime) / span) * plotWidth;
+      single ? WIDTH / 2 : PAD_LEFT + ((timeOf(date) - minTime) / span) * plotWidth;
+
+    const bothValueTracks = enabled.sentiment && enabled.conversations;
+    const sentimentH = bothValueTracks ? PAIRED_TRACK_H : SOLO_TRACK_H;
+    const convH = bothValueTracks ? PAIRED_TRACK_H : SOLO_TRACK_H;
 
     let y = PAD_TOP;
     let sentimentTop = 0;
@@ -204,21 +218,21 @@ function TimelineChart({
     let introY = 0;
 
     if (enabled.sentiment) {
-      sentimentTop = y + 14;
-      sentimentBottom = y + SENTIMENT_H - 8;
+      sentimentTop = y + 16;
+      sentimentBottom = y + sentimentH - 4;
       sentimentZeroY = (sentimentTop + sentimentBottom) / 2;
-      y += SENTIMENT_H;
+      y += sentimentH + TRACK_GAP;
     }
     if (enabled.conversations) {
       convTop = y + 16;
-      convBottom = y + CONV_H - 6;
-      y += CONV_H;
+      convBottom = y + convH - 4;
+      y += convH + (enabled.intros ? TRACK_GAP : 8);
     }
     if (enabled.intros) {
       introY = y + INTRO_H / 2;
       y += INTRO_H;
     }
-    const dateY = y + 6;
+    const dateY = y + 8;
     const height = dateY + DATE_H;
 
     const startDate = new Date(minTime).toISOString().slice(0, 10);
@@ -226,9 +240,8 @@ function TimelineChart({
     const filledWeeks = enabled.conversations
       ? fillConversationWeeks(conversationWeeks, { startDate, endDate })
       : [];
-    const maxWeekCount = Math.max(1, ...filledWeeks.map((week) => week.count));
-    const weekWidth = single ? 24 : Math.max(4, (7 * 86_400_000 * plotWidth) / span);
-    const barWidth = Math.min(28, Math.max(3, weekWidth * 0.72));
+    const rawMax = Math.max(0, ...filledWeeks.map((week) => week.count));
+    const maxWeekCount = niceCeiling(rawMax);
 
     const sentimentPositioned = points.map((point) => ({
       point,
@@ -245,15 +258,13 @@ function TimelineChart({
     }));
 
     const weekPositioned = filledWeeks.map((point) => {
-      const x = xFor(point.weekStart);
-      const barH =
-        point.count > 0 ? ((convBottom - convTop) * point.count) / maxWeekCount : 0;
+      const x = xFor(addDays(point.weekStart, 3));
+      const yValue =
+        convBottom - (maxWeekCount > 0 ? (point.count / maxWeekCount) * (convBottom - convTop) : 0);
       return {
         point,
         x,
-        barWidth,
-        y: convBottom - barH,
-        height: barH,
+        y: yValue,
       };
     });
 
@@ -320,6 +331,9 @@ function TimelineChart({
   const pathD = layout.sentimentPositioned
     .map((entry, index) => `${index === 0 ? "M" : "L"}${entry.x},${entry.y}`)
     .join(" ");
+  const weekPathD = layout.weekPositioned
+    .map((entry, index) => `${index === 0 ? "M" : "L"}${entry.x},${entry.y}`)
+    .join(" ");
 
   return (
     <div className="relative">
@@ -331,16 +345,16 @@ function TimelineChart({
         {enabled.sentiment ? (
           <g>
             <line
-              x1={PAD_X}
-              x2={WIDTH - PAD_X}
+              x1={PAD_LEFT}
+              x2={WIDTH - PAD_RIGHT}
               y1={layout.sentimentZeroY}
               y2={layout.sentimentZeroY}
               stroke="rgba(255,255,255,0.15)"
               strokeDasharray="4 4"
             />
             <text
-              x={PAD_X}
-              y={layout.sentimentTop - 8}
+              x={8}
+              y={layout.sentimentTop + 3}
               className="fill-white/35"
               fontSize="10"
               textAnchor="start"
@@ -348,8 +362,8 @@ function TimelineChart({
               Positive
             </text>
             <text
-              x={PAD_X}
-              y={layout.sentimentZeroY + 4}
+              x={8}
+              y={layout.sentimentZeroY + 3}
               className="fill-white/35"
               fontSize="10"
               textAnchor="start"
@@ -357,8 +371,8 @@ function TimelineChart({
               Neutral
             </text>
             <text
-              x={PAD_X}
-              y={layout.sentimentBottom + 12}
+              x={8}
+              y={layout.sentimentBottom}
               className="fill-white/35"
               fontSize="10"
               textAnchor="start"
@@ -390,8 +404,8 @@ function TimelineChart({
         {enabled.conversations ? (
           <g>
             <text
-              x={PAD_X}
-              y={layout.convTop - 6}
+              x={PAD_LEFT}
+              y={layout.convTop - 8}
               className="fill-white/35"
               fontSize="10"
               textAnchor="start"
@@ -399,49 +413,70 @@ function TimelineChart({
               Conversations / week
             </text>
             <text
-              x={WIDTH - PAD_X}
-              y={layout.convTop - 6}
+              x={WIDTH - 8}
+              y={layout.convTop + 3}
               className="fill-white/35"
               fontSize="10"
               textAnchor="end"
             >
               {layout.maxWeekCount}
             </text>
+            <text
+              x={WIDTH - 8}
+              y={layout.convBottom}
+              className="fill-white/35"
+              fontSize="10"
+              textAnchor="end"
+            >
+              0
+            </text>
             <line
-              x1={PAD_X}
-              x2={WIDTH - PAD_X}
+              x1={PAD_LEFT}
+              x2={WIDTH - PAD_RIGHT}
               y1={layout.convBottom}
               y2={layout.convBottom}
               stroke="rgba(255,255,255,0.1)"
               strokeWidth={1}
             />
-            {layout.weekPositioned.map(({ point, x, barWidth, y, height }) => {
-              const isHovered = hovered?.kind === "week" && hovered.weekStart === point.weekStart;
-              return (
-                <rect
-                  key={point.weekStart}
-                  x={x}
-                  y={height > 0 ? y : layout.convBottom - 2}
-                  width={barWidth}
-                  height={height > 0 ? height : 2}
-                  rx={1.5}
-                  fill="#ff5200"
-                  fillOpacity={isHovered ? 1 : height > 0 ? 0.75 : 0.2}
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHovered({ kind: "week", weekStart: point.weekStart })}
-                  onMouseLeave={() =>
-                    setHovered((current) => (current?.kind === "week" ? null : current))
-                  }
-                />
-              );
-            })}
+            {layout.weekPositioned.length > 0 ? (
+              <path d={weekPathD} fill="none" stroke="#ff5200" strokeOpacity={0.85} strokeWidth={1.75} />
+            ) : null}
+            {layout.weekPositioned
+              .filter((entry) => entry.point.count > 0)
+              .map(({ point, x, y }) => {
+                const isHovered = hovered?.kind === "week" && hovered.weekStart === point.weekStart;
+                return (
+                  <g key={point.weekStart}>
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={10}
+                      fill="transparent"
+                      className="cursor-pointer"
+                      onMouseEnter={() => setHovered({ kind: "week", weekStart: point.weekStart })}
+                      onMouseLeave={() =>
+                        setHovered((current) => (current?.kind === "week" ? null : current))
+                      }
+                    />
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={isHovered ? 6 : 4}
+                      fill="#ff5200"
+                      stroke="rgba(255,255,255,0.3)"
+                      strokeWidth={1}
+                      className="pointer-events-none"
+                    />
+                  </g>
+                );
+              })}
           </g>
         ) : null}
 
         {enabled.intros ? (
           <g>
             <text
-              x={PAD_X}
+              x={8}
               y={layout.introY - 22}
               className="fill-white/35"
               fontSize="10"
@@ -450,8 +485,8 @@ function TimelineChart({
               New users
             </text>
             <line
-              x1={PAD_X}
-              x2={WIDTH - PAD_X}
+              x1={PAD_LEFT}
+              x2={WIDTH - PAD_RIGHT}
               y1={layout.introY}
               y2={layout.introY}
               stroke="rgba(255,255,255,0.1)"
@@ -567,7 +602,7 @@ function TimelineChart({
         <div
           className="pointer-events-none absolute z-10 w-52 -translate-x-1/2 rounded-lg border border-white/15 bg-black px-3 py-2 text-xs shadow-lg"
           style={{
-            left: `${((hoveredWeek.x + hoveredWeek.barWidth / 2) / WIDTH) * 100}%`,
+            left: `${(hoveredWeek.x / WIDTH) * 100}%`,
             top: `${(hoveredWeek.y / layout.height) * 100 - 16}%`,
           }}
         >
