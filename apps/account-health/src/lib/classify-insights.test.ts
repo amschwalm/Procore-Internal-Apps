@@ -167,5 +167,8 @@ describe("Grunley insights export", () => {
       "commitments",
       "rfis",
     ]);
+    expect(snapshot.conversationVolume?.current30).toBeGreaterThan(0);
+    expect(snapshot.conversationVolume?.prior30).toBeGreaterThan(0);
+    expect(snapshot.conversationsByWeek?.length).toBeGreaterThan(0);
   });
 });
