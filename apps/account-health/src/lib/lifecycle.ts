@@ -345,6 +345,90 @@ export function summarizeConversionTiming(
   };
 }
 
+export type ConversationVolumeSummary = {
+  current30: number;
+  prior30: number;
+  deltaAbs: number;
+  deltaPct: number | null;
+};
+
+/**
+ * Total conversation volume, current trailing 30 days vs. the 30 days
+ * immediately before that — the account-level "how much are they talking to
+ * agents, and is it going up or down" headline metric. Works from every
+ * source's completed-conversation list, independent of person-level
+ * attribution (unlike per-user chats30, which only has the current window).
+ */
+export function summarizeConversationVolume(
+  conversations: Array<{ createdAt: Date }>,
+  now: Date,
+): ConversationVolumeSummary {
+  const currentStart = trailingWindowStart(now, 30);
+  const priorStart = addUtcDays(currentStart, -30);
+  let current30 = 0;
+  let prior30 = 0;
+  for (const conversation of conversations) {
+    if (conversation.createdAt >= currentStart && conversation.createdAt <= now) {
+      current30 += 1;
+    } else if (conversation.createdAt >= priorStart && conversation.createdAt < currentStart) {
+      prior30 += 1;
+    }
+  }
+  const deltaAbs = current30 - prior30;
+  return {
+    current30,
+    prior30,
+    deltaAbs,
+    deltaPct: prior30 > 0 ? (deltaAbs / prior30) * 100 : null,
+  };
+}
+
+export type WeekPoint = {
+  weekStart: string;
+  count: number;
+};
+
+function weekStartUTC(date: Date): Date {
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const mondayOffset = (start.getUTCDay() + 6) % 7;
+  start.setUTCDate(start.getUTCDate() - mondayOffset);
+  return start;
+}
+
+/** Buckets every conversation into its Monday-start ISO week for a volume-over-time series. */
+export function summarizeConversationsByWeek(
+  conversations: Array<{ createdAt: Date }>,
+): WeekPoint[] {
+  const counts = new Map<string, number>();
+  for (const conversation of conversations) {
+    const weekStart = calendarDateUTC(weekStartUTC(conversation.createdAt));
+    counts.set(weekStart, (counts.get(weekStart) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([weekStart, count]) => ({ weekStart, count }))
+    .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+}
+
+/**
+ * Inserts zero-count Mondays so a volume chart can draw quiet weeks between
+ * `startDate` and `endDate` instead of leaving gaps in the bar series.
+ */
+export function fillConversationWeeks(
+  points: WeekPoint[],
+  range: { startDate: string; endDate: string },
+): WeekPoint[] {
+  const byWeek = new Map(points.map((point) => [point.weekStart, point.count]));
+  let cursor = weekStartUTC(dateFromCalendar(range.startDate));
+  const end = weekStartUTC(dateFromCalendar(range.endDate));
+  const filled: WeekPoint[] = [];
+  while (cursor.getTime() <= end.getTime()) {
+    const weekStart = calendarDateUTC(cursor);
+    filled.push({ weekStart, count: byWeek.get(weekStart) ?? 0 });
+    cursor = addUtcDays(cursor, 7);
+  }
+  return filled;
+}
+
 export type IntroDatePoint = {
   date: string;
   count: number;

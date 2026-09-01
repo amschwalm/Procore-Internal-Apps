@@ -222,12 +222,12 @@ export function sortCallSentimentPoints(points: CallSentimentPoint[]): CallSenti
 }
 
 const SAMPLE_TITLES = [
-  "Datagrid × FEMS — On-Site Implementation Review",
-  "Grunley — Weekly Sync",
-  "Grunley — Submittal Workflow Follow-up",
-  "Grunley — QBR Prep",
-  "Grunley — Escalation Review",
-  "Grunley — Renewal Check-in",
+  "Weekly CS check-in",
+  "QBR prep",
+  "Document search follow-up",
+  "Executive sponsor call",
+  "Project kickoff review",
+  "Adoption workshop",
 ];
 
 const SAMPLE_MOODS: Array<{ score: number; label: SentimentLabel; moodSummary: string }> = [
@@ -239,11 +239,29 @@ const SAMPLE_MOODS: Array<{ score: number; label: SentimentLabel; moodSummary: s
   { score: 0.7, label: "positive", moodSummary: "Enthusiastic and confident heading into renewal." },
 ];
 
-/** Synthetic preview data so the widget can be seen before Slack is wired up. */
-export function sampleCallSentimentPoints(now = new Date()): CallSentimentPoint[] {
+const DEFAULT_SAMPLE_SPAN_DAYS = 240;
+
+/**
+ * Synthetic preview data so the widget can be seen before Slack is wired up.
+ * Spreads evenly across [startDate, endDate] when given — pass the account's
+ * real intro-date range so the sample points span the same width as the
+ * "new users" track instead of bunching up in one corner of the chart. With
+ * no range, falls back to a ~8-month span ending "now".
+ */
+export function sampleCallSentimentPoints(
+  now = new Date(),
+  range: { startDate?: string; endDate?: string } = {},
+): CallSentimentPoint[] {
+  const endTime = range.endDate ? timeOfCalendarDate(range.endDate) : now.getTime();
+  const startTime = range.startDate
+    ? timeOfCalendarDate(range.startDate)
+    : endTime - DEFAULT_SAMPLE_SPAN_DAYS * 86_400_000;
+  const span = Math.max(endTime - startTime, 0);
+  const lastIndex = SAMPLE_TITLES.length - 1;
+
   const points: CallSentimentPoint[] = SAMPLE_TITLES.map((title, index) => {
-    const daysAgo = (SAMPLE_TITLES.length - index) * 21;
-    const date = new Date(now.getTime() - daysAgo * 86_400_000);
+    const fraction = lastIndex === 0 ? 1 : index / lastIndex;
+    const date = new Date(startTime + fraction * span);
     const mood = SAMPLE_MOODS[index] ?? SAMPLE_MOODS[0];
     return {
       id: `sample-${index}`,
@@ -256,4 +274,8 @@ export function sampleCallSentimentPoints(now = new Date()): CallSentimentPoint[
     };
   });
   return sortCallSentimentPoints(points);
+}
+
+function timeOfCalendarDate(value: string): number {
+  return new Date(`${value}T00:00:00.000Z`).getTime();
 }

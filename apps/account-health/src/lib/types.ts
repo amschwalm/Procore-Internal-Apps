@@ -1,5 +1,6 @@
 import type { CallSentimentPoint } from "./call-sentiment";
-import type { EngagementType } from "./lifecycle";
+import type { GrowthSignal } from "./growth-signals";
+import type { ConversationVolumeSummary, EngagementType, WeekPoint } from "./lifecycle";
 import type { ToolRelevanceSummary } from "./procore-tools";
 
 export type SourceId =
@@ -112,17 +113,22 @@ export type MetricsSnapshot = {
   discoveredAuthorFields: string[];
   users: ClassifiedUser[];
   toolRelevance?: ToolRelevanceSummary;
+  conversationVolume?: ConversationVolumeSummary;
+  conversationsByWeek?: WeekPoint[];
 };
 
 export type AccountRecord = {
   id: string;
   name: string;
+  /** Internal test account — persist and display only synthetic people. */
+  anonymized?: boolean;
   createdAt: string;
   connections: Connections;
   snapshot: MetricsSnapshot;
   job: SyncJob;
   directory: DirectoryUser[];
   callSentiment: CallSentimentPoint[];
+  growthSignals: GrowthSignal[];
 };
 
 export type PublicAccount = {
@@ -133,6 +139,7 @@ export type PublicAccount = {
   source: MetricsSnapshot["source"];
   computedAt: string | null;
   current: boolean;
+  anonymized: boolean;
 };
 
 export type PublicSourceState = {

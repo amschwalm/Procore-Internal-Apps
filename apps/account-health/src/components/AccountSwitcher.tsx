@@ -4,7 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { PublicAccount } from "@/lib/types";
 
-export function AccountSwitcher({ accounts }: { accounts: PublicAccount[] }) {
+export function AccountSwitcher({
+  accounts,
+  compact = false,
+}: {
+  accounts: PublicAccount[];
+  compact?: boolean;
+}) {
   const router = useRouter();
   const current = accounts.find((account) => account.current);
   const [busy, setBusy] = useState(false);
@@ -28,7 +34,7 @@ export function AccountSwitcher({ accounts }: { accounts: PublicAccount[] }) {
     return (
       <a
         href="/accounts"
-        className="rounded-md border border-pc-orange px-3 py-1.5 text-xs font-medium text-pc-orange"
+        className="block rounded-md border border-pc-orange px-3 py-1.5 text-center text-xs font-medium text-pc-orange"
       >
         Create account
       </a>
@@ -36,13 +42,17 @@ export function AccountSwitcher({ accounts }: { accounts: PublicAccount[] }) {
   }
 
   return (
-    <label className="flex items-center gap-2 text-xs text-white/50">
-      <span className="hidden uppercase tracking-[0.14em] sm:inline">Account</span>
+    <label className={compact ? "block text-[10px] uppercase tracking-[0.14em] text-white/35" : "flex items-center gap-2 text-xs text-white/50"}>
+      <span className={compact ? "mb-1.5 block" : "hidden uppercase tracking-[0.14em] sm:inline"}>
+        Account
+      </span>
       <select
         disabled={busy}
         value={current?.id ?? ""}
         onChange={(event) => void select(event.target.value)}
-        className="max-w-48 rounded-md border border-white/15 bg-black px-2 py-1.5 text-sm text-white outline-none focus:border-pc-orange"
+        className={`rounded-md border border-white/15 bg-black px-2 py-1.5 text-sm text-white outline-none focus:border-pc-orange ${
+          compact ? "w-full" : "max-w-48"
+        }`}
       >
         {accounts.map((account) => (
           <option key={account.id} value={account.id}>

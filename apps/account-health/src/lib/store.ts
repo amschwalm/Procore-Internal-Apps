@@ -1,7 +1,14 @@
 import { randomUUID } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import {
+  ANONYMOUS_ACCOUNT_NAME,
+  anonymizeAccountRecord,
+  isAnonymousAccountName,
+  rawAccountNeedsAnonymizationPersist,
+} from "./anonymize";
 import type { CallSentimentPoint } from "./call-sentiment";
+import { normalizeGrowthSignals, type GrowthSignal } from "./growth-signals";
 import { emptyCounts } from "./lifecycle";
 import type {
   AccountRecord,
@@ -18,11 +25,13 @@ const STATE_PATH = path.join(DATA_DIR, "state.json");
 export type AppState = {
   accountId: string | null;
   accountName: string | null;
+  anonymized: boolean;
   connections: Connections;
   snapshot: MetricsSnapshot;
   job: SyncJob;
   directory: DirectoryUser[];
   callSentiment: CallSentimentPoint[];
+  growthSignals: GrowthSignal[];
 };
 
 export type Workspace = {
@@ -61,24 +70,29 @@ export function emptyAccountState(): AppState {
   return {
     accountId: null,
     accountName: null,
+    anonymized: false,
     connections: {},
     snapshot: emptySnapshot(),
     job: emptyJob(),
     directory: [],
     callSentiment: [],
+    growthSignals: [],
   };
 }
 
 function emptyAccount(name: string): AccountRecord {
+  const anonymized = isAnonymousAccountName(name);
   return {
     id: randomUUID(),
-    name,
+    name: anonymized ? ANONYMOUS_ACCOUNT_NAME : name,
+    anonymized,
     createdAt: new Date().toISOString(),
     connections: {},
     snapshot: emptySnapshot(),
     job: emptyJob(),
     directory: [],
     callSentiment: [],
+    growthSignals: [],
   };
 }
 
@@ -107,16 +121,21 @@ function normalizeAccount(raw: Partial<AccountRecord>): AccountRecord {
           name: user.name,
         }))
       : []);
-  return {
+  const requestedName = raw.name?.trim() || inferAccountName(snapshot);
+  const anonymized = Boolean(raw.anonymized) || isAnonymousAccountName(requestedName);
+  const account: AccountRecord = {
     id: raw.id || randomUUID(),
-    name: raw.name?.trim() || inferAccountName(snapshot),
+    name: anonymized ? ANONYMOUS_ACCOUNT_NAME : requestedName,
+    anonymized,
     createdAt: raw.createdAt || new Date().toISOString(),
     connections: raw.connections ?? {},
     snapshot,
     job: raw.job ?? emptyJob(),
     directory,
     callSentiment: raw.callSentiment ?? [],
+    growthSignals: normalizeGrowthSignals(raw.growthSignals),
   };
+  return anonymized ? anonymizeAccountRecord(account) : account;
 }
 
 export function migrateWorkspace(parsed: unknown): Workspace {
@@ -150,6 +169,7 @@ export function migrateWorkspace(parsed: unknown): Workspace {
     job: legacy.job ?? emptyJob(),
     directory: legacy.directory,
     callSentiment: legacy.callSentiment,
+    growthSignals: legacy.growthSignals,
   });
   return { currentAccountId: account.id, accounts: [account] };
 }
@@ -158,11 +178,13 @@ function accountToState(account: AccountRecord): AppState {
   return {
     accountId: account.id,
     accountName: account.name,
+    anonymized: Boolean(account.anonymized),
     connections: account.connections,
     snapshot: account.snapshot,
     job: account.job,
     directory: account.directory,
     callSentiment: account.callSentiment,
+    growthSignals: account.growthSignals,
   };
 }
 
@@ -178,6 +200,7 @@ export function publicAccounts(workspace: Workspace): PublicAccount[] {
       source: account.snapshot.source,
       computedAt: account.snapshot.computedAt,
       current: account.id === workspace.currentAccountId,
+      anonymized: Boolean(account.anonymized),
     }));
 }
 
@@ -195,7 +218,10 @@ export async function readWorkspace(): Promise<Workspace> {
   const alreadyMigrated = Boolean(
     raw && typeof raw === "object" && Array.isArray((raw as { accounts?: unknown }).accounts),
   );
-  if (!alreadyMigrated && workspace.accounts.length > 0) {
+  if (
+    (!alreadyMigrated && workspace.accounts.length > 0) ||
+    rawAccountNeedsAnonymizationPersist(raw)
+  ) {
     await writeWorkspace(workspace);
   }
   return workspace;
@@ -225,7 +251,20 @@ export function applyAccountState(workspace: Workspace, state: AppState): Worksp
   current.job = state.job;
   current.directory = state.directory;
   current.callSentiment = state.callSentiment;
-  if (state.accountName?.trim()) current.name = state.accountName.trim();
+  current.growthSignals = normalizeGrowthSignals(state.growthSignals);
+  const incomingName = state.accountName?.trim() ?? "";
+  if (current.anonymized || isAnonymousAccountName(current.name) || isAnonymousAccountName(incomingName)) {
+    Object.assign(
+      current,
+      anonymizeAccountRecord({
+        ...current,
+        name: ANONYMOUS_ACCOUNT_NAME,
+        anonymized: true,
+      }),
+    );
+  } else if (incomingName) {
+    current.name = incomingName;
+  }
   return workspace;
 }
 
@@ -260,7 +299,19 @@ export async function renameAccount(id: string, name: string): Promise<AccountRe
   const workspace = await readWorkspace();
   const account = workspace.accounts.find((item) => item.id === id);
   if (!account) throw new Error("That account does not exist.");
-  account.name = trimmed;
+  if (isAnonymousAccountName(trimmed)) {
+    Object.assign(
+      account,
+      anonymizeAccountRecord({
+        ...account,
+        name: ANONYMOUS_ACCOUNT_NAME,
+        anonymized: true,
+      }),
+    );
+  } else {
+    account.name = trimmed;
+    account.anonymized = false;
+  }
   await writeWorkspace(workspace);
   return account;
 }

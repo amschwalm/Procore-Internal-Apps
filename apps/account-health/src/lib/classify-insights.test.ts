@@ -100,6 +100,25 @@ describe("snapshotFromInsights", () => {
     expect(snapshot.toolRelevance?.tools[0]).toMatchObject({ toolId: "rfis", count: 2 });
   });
 
+  it("summarizes 30-day conversation volume and weekly buckets from completed rows", () => {
+    const csv = [
+      HEADER,
+      row("a@acme.test", "2026-08-20T10:00:00"),
+      row("a@acme.test", "2026-08-10T10:00:00"),
+      row("b@acme.test", "2026-07-15T10:00:00"),
+      row("c@acme.test", "2026-06-01T10:00:00"),
+    ].join("\n");
+    const snapshot = snapshotFromInsights(parseInsightsTable(tableFromCsv(csv)), { now });
+    expect(snapshot.conversationVolume).toEqual({
+      current30: 2,
+      prior30: 1,
+      deltaAbs: 1,
+      deltaPct: 100,
+    });
+    expect(snapshot.conversationsByWeek?.some((week) => week.count > 0)).toBe(true);
+    expect(snapshot.conversationsByWeek?.reduce((sum, week) => sum + week.count, 0)).toBe(4);
+  });
+
   it("counts every uploaded row toward toolRelevance, even without a matching keyword", () => {
     const csv = [HEADER, row("a@acme.test", "2026-06-01T10:00:00")].join("\n");
     const snapshot = snapshotFromInsights(parseInsightsTable(tableFromCsv(csv)), { now });
@@ -148,5 +167,8 @@ describe("Grunley insights export", () => {
       "commitments",
       "rfis",
     ]);
+    expect(snapshot.conversationVolume?.current30).toBeGreaterThan(0);
+    expect(snapshot.conversationVolume?.prior30).toBeGreaterThan(0);
+    expect(snapshot.conversationsByWeek?.length).toBeGreaterThan(0);
   });
 });

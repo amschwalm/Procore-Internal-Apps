@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { parseCallSummaryMessage, sampleCallSentimentPoints, sortCallSentimentPoints } from "@/lib/call-sentiment";
 import { snapshotFromOrg } from "@/lib/classify-org";
 import { publicDatagridError, syncOrg, validateKey } from "@/lib/datagrid";
+import { extractGrowthSignals, sampleGrowthCalls, type GrowthCall } from "@/lib/growth-signals";
 import { buildSampleSnapshot } from "@/lib/sample";
 import { listChannelMessages, publicSlackError, validateSlackConnection } from "@/lib/slack";
 import { emptyJob, readState } from "@/lib/store";
@@ -49,9 +50,22 @@ export async function POST(request: Request) {
     const job = await jobApi.start("call-sentiment-sample");
     await jobApi.addStep("sample", "Building sample call sentiment…");
     const next = await jobApi.read();
-    next.callSentiment = sampleCallSentimentPoints(new Date());
+    const introDates = next.snapshot.users
+      .map((user) => user.introDate)
+      .filter((date): date is string => Boolean(date))
+      .sort();
+    next.callSentiment = sampleCallSentimentPoints(new Date(), {
+      startDate: introDates[0],
+      endDate: introDates[introDates.length - 1],
+    });
+    next.growthSignals = extractGrowthSignals(sampleGrowthCalls(next.callSentiment));
     await jobApi.write(next);
-    await jobApi.addStep("sample", `Loaded ${next.callSentiment.length} sample calls.`);
+    await jobApi.addStep(
+      "sample",
+      introDates.length > 0
+        ? `Loaded ${next.callSentiment.length} sample calls spanning the account's ${introDates.length} known intro dates, with ${next.growthSignals.length} growth signals.`
+        : `Loaded ${next.callSentiment.length} sample calls, with ${next.growthSignals.length} growth signals.`,
+    );
     await jobApi.finish("success");
     const done = await jobApi.read();
     return NextResponse.json({ callSentiment: done.callSentiment, job: done.job ?? job });
@@ -158,18 +172,29 @@ async function runSlackSync(botToken: string, channelId: string, accountId: stri
     await jobApi.addStep("history", `Read ${messages.length} message${messages.length === 1 ? "" : "s"}.`);
 
     const points: CallSentimentPoint[] = [];
+    const growthCalls: GrowthCall[] = [];
     for (const message of messages) {
       const point = parseCallSummaryMessage({ ts: message.ts, text: message.text });
-      if (point) points.push(point);
+      if (!point) continue;
+      points.push(point);
+      growthCalls.push({
+        id: point.id,
+        date: point.date,
+        title: point.title,
+        text: message.text,
+        source: "slack",
+      });
     }
     const sorted = sortCallSentimentPoints(points);
+    const growthSignals = extractGrowthSignals(growthCalls);
     await jobApi.addStep(
       "classify",
-      `Parsed ${sorted.length} call summar${sorted.length === 1 ? "y" : "ies"} with a Mood section out of ${messages.length} message${messages.length === 1 ? "" : "s"}.`,
+      `Parsed ${sorted.length} call summar${sorted.length === 1 ? "y" : "ies"} with a Mood section out of ${messages.length} message${messages.length === 1 ? "" : "s"}. Found ${growthSignals.length} growth signal${growthSignals.length === 1 ? "" : "s"}.`,
     );
 
     const state = await jobApi.read();
     state.callSentiment = sorted;
+    state.growthSignals = growthSignals;
     if (state.connections.slack) {
       state.connections.slack.lastError = undefined;
       state.connections.slack.lastValidatedAt = new Date().toISOString();

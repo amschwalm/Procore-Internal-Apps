@@ -9,7 +9,9 @@ export default async function AccountsPage() {
   const accounts = publicAccounts(workspace);
   return (
     <AppShell current="accounts" accounts={accounts}>
-      <AccountsBoard key={workspace.currentAccountId ?? "none"} initial={accounts} />
+      <div className="mx-auto max-w-6xl">
+        <AccountsBoard key={workspace.currentAccountId ?? "none"} initial={accounts} />
+      </div>
     </AppShell>
   );
 }

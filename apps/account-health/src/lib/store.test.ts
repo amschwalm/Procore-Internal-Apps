@@ -59,6 +59,7 @@ describe("migrateWorkspace", () => {
       },
       directory: [],
       callSentiment: [],
+      growthSignals: [],
     };
     const workspace = migrateWorkspace({
       currentAccountId: "acc-1",
@@ -97,6 +98,7 @@ describe("publicAccounts", () => {
           },
           directory: [],
           callSentiment: [],
+          growthSignals: [],
         },
         {
           id: "a",
@@ -115,12 +117,14 @@ describe("publicAccounts", () => {
           },
           directory: [],
           callSentiment: [],
+          growthSignals: [],
         },
       ],
     });
     expect(listed.map((account) => account.name)).toEqual(["Alpha", "Beta"]);
     expect(listed.find((account) => account.id === "b")?.current).toBe(true);
     expect(listed.find((account) => account.id === "b")?.userCount).toBe(12);
+    expect(listed.every((account) => account.anonymized === false)).toBe(true);
   });
 });
 
@@ -142,6 +146,7 @@ describe("applyAccountState", () => {
           job: emptyAccountState().job,
           directory: [],
           callSentiment: [],
+          growthSignals: [],
         },
         {
           id: "beta",
@@ -152,22 +157,175 @@ describe("applyAccountState", () => {
           job: emptyAccountState().job,
           directory: [],
           callSentiment: [],
+          growthSignals: [],
         },
       ],
     };
     const next = applyAccountState(workspace, {
       accountId: "alpha",
       accountName: "Alpha",
+      anonymized: false,
       connections: { datagrid: { apiKey: "dg_alpha" } },
       snapshot: { ...alphaSnapshot, provisionedUsers: 12 },
       job: emptyAccountState().job,
       directory: [],
       callSentiment: [],
+      growthSignals: [],
     });
     expect(next.currentAccountId).toBe("beta");
     expect(next.accounts.find((account) => account.id === "alpha")?.snapshot.provisionedUsers).toBe(12);
     expect(next.accounts.find((account) => account.id === "alpha")?.connections.datagrid?.apiKey).toBe("dg_alpha");
     expect(next.accounts.find((account) => account.id === "beta")?.snapshot.provisionedUsers).toBe(9);
+  });
+
+  it("renames Turner to Vortex Construction and strips customer names on read", () => {
+    const snapshot = emptySnapshot();
+    snapshot.source = "sample";
+    snapshot.users = [
+      {
+        id: "u1",
+        email: "ava.chen@acme.test",
+        name: "Ava Chen",
+        type: "sticky",
+        power: false,
+        introDate: "2026-01-01",
+        firstReturnDate: "2026-01-03",
+        lastActiveDate: "2026-08-01",
+        activeDays30: 6,
+        activeDates30: [],
+        agents30: 1,
+        agentIds30: [],
+      },
+    ];
+    const workspace = migrateWorkspace({
+      currentAccountId: "t1",
+      accounts: [
+        {
+          id: "t1",
+          name: "Turner",
+          createdAt: "2026-08-01T00:00:00.000Z",
+          connections: {},
+          snapshot,
+          job: emptyAccountState().job,
+          directory: [{ id: "u1", email: "ava.chen@acme.test", name: "Ava Chen" }],
+          callSentiment: [
+            {
+              id: "c1",
+              date: "2026-08-01",
+              title: "Weekly sync with Ava Chen",
+              source: "sample",
+              score: 0,
+              label: "neutral",
+              moodSummary: "Ava Chen walked through the ladder.",
+            },
+          ],
+          growthSignals: [],
+        },
+      ],
+    });
+    const vortex = workspace.accounts[0]!;
+    expect(vortex.name).toBe("Vortex Construction");
+    expect(vortex.anonymized).toBe(true);
+    expect(vortex.snapshot.users[0]?.name).toBe("User 01");
+    expect(vortex.snapshot.users[0]?.email).toBe("user01@internal.test");
+    expect(vortex.directory[0]?.name).toBe("User 01");
+    expect(vortex.callSentiment[0]?.title).toBe("Weekly sync with User 01");
+    expect(vortex.callSentiment[0]?.moodSummary).not.toMatch(/Ava Chen/);
+  });
+
+  it("keeps real people on a non-test account", () => {
+    const snapshot = emptySnapshot();
+    snapshot.users = [
+      {
+        id: "u1",
+        email: "a@grunley.com",
+        name: "Ada Lovelace",
+        type: "sticky",
+        power: false,
+        introDate: null,
+        firstReturnDate: null,
+        lastActiveDate: null,
+        activeDays30: 5,
+        activeDates30: [],
+        agents30: 0,
+        agentIds30: [],
+      },
+    ];
+    const workspace = migrateWorkspace({
+      currentAccountId: "g1",
+      accounts: [
+        {
+          id: "g1",
+          name: "Grunley",
+          createdAt: "2026-08-01T00:00:00.000Z",
+          connections: {},
+          snapshot,
+          job: emptyAccountState().job,
+          directory: [],
+          callSentiment: [],
+          growthSignals: [],
+        },
+      ],
+    });
+    expect(workspace.accounts[0]?.name).toBe("Grunley");
+    expect(workspace.accounts[0]?.anonymized).toBe(false);
+    expect(workspace.accounts[0]?.snapshot.users[0]?.name).toBe("Ada Lovelace");
+    expect(workspace.accounts[0]?.snapshot.users[0]?.email).toBe("a@grunley.com");
+  });
+
+  it("anonymizes sample people when writing to Vortex Construction", () => {
+    const snapshot = emptySnapshot();
+    snapshot.source = "sample";
+    snapshot.provisionedUsers = 1;
+    snapshot.users = [
+      {
+        id: "s1",
+        email: "ava.chen@acme.test",
+        name: "Ava Chen",
+        type: "intro",
+        power: false,
+        introDate: "2026-08-01",
+        firstReturnDate: null,
+        lastActiveDate: "2026-08-01",
+        activeDays30: 1,
+        activeDates30: ["2026-08-01"],
+        agents30: 1,
+        agentIds30: ["Ask Agent"],
+      },
+    ];
+    const workspace = {
+      currentAccountId: "v1",
+      accounts: [
+        {
+          id: "v1",
+          name: "Vortex Construction",
+          anonymized: true,
+          createdAt: "2026-08-01T00:00:00.000Z",
+          connections: {},
+          snapshot: emptySnapshot(),
+          job: emptyAccountState().job,
+          directory: [],
+          callSentiment: [],
+          growthSignals: [],
+        },
+      ],
+    };
+    const next = applyAccountState(workspace, {
+      accountId: "v1",
+      accountName: "Vortex Construction",
+      anonymized: true,
+      connections: {},
+      snapshot,
+      job: emptyAccountState().job,
+      directory: [{ id: "s1", email: "ava.chen@acme.test", name: "Ava Chen" }],
+      callSentiment: [],
+      growthSignals: [],
+    });
+    const vortex = next.accounts[0]!;
+    expect(vortex.snapshot.users[0]?.name).toBe("User 01");
+    expect(vortex.snapshot.users[0]?.email).toBe("user01@internal.test");
+    expect(vortex.directory[0]?.email).toBe("user01@internal.test");
+    expect(JSON.stringify(vortex)).not.toMatch(/ava\.chen|Ava Chen/i);
   });
 
   it("refuses to save when no account exists", () => {

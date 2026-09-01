@@ -28,5 +28,10 @@ describe("buildSampleSnapshot", () => {
     );
     expect(convertedUsers.length).toBeGreaterThan(0);
     expect(convertedUsers.every((user) => user.daysToConversion !== null)).toBe(true);
+
+    expect(snapshot.conversationVolume).toBeDefined();
+    expect(snapshot.conversationVolume!.current30).toBeGreaterThan(0);
+    expect(snapshot.conversationVolume!.prior30).toBeGreaterThan(0);
+    expect(snapshot.conversationsByWeek?.length).toBeGreaterThan(0);
   });
 });

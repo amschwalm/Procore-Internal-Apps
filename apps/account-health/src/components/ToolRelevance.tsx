@@ -21,9 +21,9 @@ export function ToolRelevance({ summary }: { summary?: ToolRelevanceSummary }) {
       <div className="border-b border-white/10 px-6 py-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-lg font-medium tracking-tight text-white">Tool Relevance</h2>
+            <h2 className="text-lg font-medium tracking-tight text-white">Areas of Interest</h2>
             <p className="mt-1 max-w-2xl text-sm text-white/50">
-              Which Procore tools people search about most, from the uploaded insights export.
+              Which Procore tools people search about most, from uploaded agent conversations.
             </p>
           </div>
           {hasRows ? (

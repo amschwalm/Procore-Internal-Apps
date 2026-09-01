@@ -23,7 +23,7 @@ export function SourcesBoard({
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/50">
           {accountName
-            ? "Keys on this page belong only to this account. Datagrid is the seat list. Person-level stages come from an insights CSV or Excel uploaded on Overview."
+            ? "Keys on this page belong only to this account. Datagrid is the seat list. Person-level stages come from an insights CSV or Excel uploaded on the Account dashboard."
             : "Create an account first. Each customer keeps its own Datagrid key and insights export."}
         </p>
         {!accountName ? (
