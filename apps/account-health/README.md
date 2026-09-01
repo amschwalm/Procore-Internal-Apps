@@ -10,10 +10,14 @@ npm test
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000` (lands on **Portfolio**).
 
-1. **Accounts** — create one record per customer and switch between them in the header. Each account keeps its own Datagrid key, insights export, and ladder. Name an account **Vortex Construction** to use it as an internal test environment (all people, emails, and call text are stored as synthetic `User 01` identities).
-2. **Sources** — paste that account’s Datagrid API key (required for live user data) and, optionally, a Slack bot token + channel (call-summary sentiment and growth areas). Gong, Avoma, HubSpot, and Salesforce can be saved now; they are not read yet.
-3. **Overview** — 30-day agent conversation volume (with month-over-month), a Timeline with toggles for call sentiment / new users / weekly conversations, the user-type ladder, Areas of Interest, and Growth Areas Identified (target use cases plus the field problem behind each one). Use **Load sample** to preview without a key, **Load sample sentiment** for the Timeline, or **Sync Datagrid** / **Sync Slack** after keys are saved. Upload an insights Excel/CSV to classify people and rank Areas of Interest.
+Left nav:
 
-Credentials and snapshots live in `.data/` and are gitignored.
+1. **Portfolio** — aggregation across the book: active companies, active users, agent conversations, credits, and usage by pack type.
+2. **Book of Business** — company grid, filterable and sortable (including CSE of record). Pack / CSE / segment are sample assignments until Salesforce is wired. Click a live workspace account to open its dashboard.
+3. **Account** — one customer: 30-day agent conversation volume, Timeline, user ladder, Areas of Interest, Growth Areas Identified.
+4. **Accounts** — create and switch customer records. Name an account **Vortex Construction** to keep it fully anonymized as an internal test environment.
+5. **Sources** — that account’s Datagrid API key and optional Slack bot token + channel.
+
+Workspace accounts overlay the sample book by name (Grunley, Vortex Construction). Credentials and snapshots live in `.data/` and are gitignored.

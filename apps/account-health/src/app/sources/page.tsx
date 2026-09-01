@@ -10,11 +10,13 @@ export default async function SourcesPage() {
   const state = await readState();
   return (
     <AppShell current="sources" accounts={publicAccounts(workspace)}>
-      <SourcesBoard
-        key={state.accountId ?? "none"}
-        initial={publicSources(state.connections)}
-        accountName={state.accountName}
-      />
+      <div className="mx-auto max-w-6xl">
+        <SourcesBoard
+          key={state.accountId ?? "none"}
+          initial={publicSources(state.connections)}
+          accountName={state.accountName}
+        />
+      </div>
     </AppShell>
   );
 }
