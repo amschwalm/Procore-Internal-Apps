@@ -1,5 +1,4 @@
 import {
-  PACK_IDS,
   UNASSIGNED_CSE,
   type PackId,
   type PortfolioCompany,
@@ -16,7 +15,7 @@ const CSES = [
 ];
 
 const NAMED: Array<Pick<PortfolioCompany, "name" | "segment" | "pack" | "cse">> = [
-  { name: "Consigli Construction Co., Inc - HQ", segment: "strategic", pack: "none", cse: "Ronak Parikh" },
+  { name: "Consigli Construction Co., Inc - HQ", segment: "strategic", pack: "enterprise", cse: "Ronak Parikh" },
   { name: "Grunley", segment: "strategic", pack: "enterprise", cse: "Ronak Parikh" },
   { name: "Vortex Construction", segment: "commercial", pack: "none", cse: UNASSIGNED_CSE },
   { name: "Turner Construction — Sample", segment: "enterprise", pack: "pro", cse: "Brian Cerrato" },
@@ -81,27 +80,50 @@ function companyId(index: number): string {
   return `pf-${String(index + 1).padStart(3, "0")}`;
 }
 
+/** Weighted Starter / Pro / Enterprise so the book is not all No Pack. */
+function rollPack(rand: () => number): PackId {
+  const roll = rand();
+  if (roll < 0.5) return "starter";
+  if (roll < 0.85) return "pro";
+  return "enterprise";
+}
+
+function packCreditCap(pack: PackId, rand: () => number): number {
+  const [lo, hi] =
+    pack === "enterprise"
+      ? [800_000, 3_200_000]
+      : pack === "pro"
+        ? [120_000, 550_000]
+        : pack === "starter"
+          ? [18_000, 95_000]
+          : [8_000, 40_000];
+  return Math.round((lo + (hi - lo) * rand()) / 1000) * 1000;
+}
+
+function rollMomPct(rand: () => number): number {
+  return Math.round((rand() * 40 - 14) * 10) / 10;
+}
+
 /**
  * Deterministic sample book of business so Portfolio / Book of Business have
- * a full CS-sized set before every customer org is keyed. Pack split matches
- * the usage-by-pack visual (1 Enterprise, 1 Pro, 4 Starter, rest No Pack).
+ * a full CS-sized set before every customer org is keyed. Named paid packs
+ * stay put; remaining companies are randomly Starter / Pro / Enterprise.
  * Live workspace accounts overlay by name (Grunley, Vortex Construction).
  */
 export function buildSamplePortfolio(seed = 20260831): PortfolioCompany[] {
   const rand = mulberry32(seed);
   const companies: PortfolioCompany[] = [];
-
-  const namedPacks: PackId[] = NAMED.map((row) => row.pack);
-  const remainingNone = 121 - NAMED.length;
+  const remaining = 121 - NAMED.length;
 
   for (const [index, named] of NAMED.entries()) {
-    companies.push(makeCompany(index, named, rand));
+    const pack = named.pack === "none" ? rollPack(rand) : named.pack;
+    companies.push(makeCompany(index, { ...named, pack }, rand));
   }
 
   const usedNames = new Set(NAMED.map((row) => row.name.toLowerCase()));
   let generated = 0;
   let cursor = NAMED.length;
-  while (generated < remainingNone) {
+  while (generated < remaining) {
     const useOpaque = generated % 7 === 0;
     const name = useOpaque
       ? `Company ${String(598_100_000 + generated * 17)}`
@@ -111,18 +133,10 @@ export function buildSamplePortfolio(seed = 20260831): PortfolioCompany[] {
     const segment: SegmentId = pick(rand, ["commercial", "commercial", "enterprise", "unknown"]);
     const cse = generated % 5 === 0 ? UNASSIGNED_CSE : pick(rand, CSES.filter((row) => row !== UNASSIGNED_CSE));
     companies.push(
-      makeCompany(cursor, { name, segment, pack: "none", cse }, rand),
+      makeCompany(cursor, { name, segment, pack: rollPack(rand), cse }, rand),
     );
     cursor += 1;
     generated += 1;
-  }
-
-  const packCounts = Object.fromEntries(PACK_IDS.map((pack) => [pack, 0])) as Record<PackId, number>;
-  for (const company of companies) packCounts[company.pack] += 1;
-  if (packCounts.enterprise !== 1 || packCounts.pro !== 1 || packCounts.starter !== 4) {
-    throw new Error(
-      `Sample pack split drifted: ${JSON.stringify(packCounts)} (named packs ${namedPacks.join(",")})`,
-    );
   }
 
   return companies;
@@ -162,12 +176,12 @@ function makeCompany(
             ? Math.max(1, Math.round(rand() * 18))
             : 0;
   const agentsCreated = activeAgents + Math.round(rand() * Math.max(1, activeAgents * 0.8));
-  const credits = roundCredits(
-    spec.name === "Consigli Construction Co., Inc - HQ"
-      ? 1_197_993.47
-      : activeUsers * (80 + rand() * 420) + rand() * 900,
-  );
-  const momPct = spec.pack === "none" ? Math.round((rand() * 36 - 12) * 10) / 10 : Math.round((rand() * 20 - 4) * 10) / 10;
+  const stickyShare = 0.18 + rand() * 0.47;
+  const stickyUsers = Math.min(activeUsers, Math.max(0, Math.round(activeUsers * stickyShare)));
+  const creditsCap =
+    spec.name === "Consigli Construction Co., Inc - HQ" ? 2_400_000 : packCreditCap(spec.pack, rand);
+  const utilization = spec.name === "Consigli Construction Co., Inc - HQ" ? 1_197_993.47 / 2_400_000 : 0.12 + rand() * 0.75;
+  const credits = roundCredits(Math.min(creditsCap, creditsCap * utilization));
 
   return {
     id: companyId(index),
@@ -175,12 +189,16 @@ function makeCompany(
     segment: spec.segment,
     pack: spec.pack,
     cse: spec.cse,
+    stickyUsers,
     activeUsers,
+    activeUsersMomPct: rollMomPct(rand),
     agentConversations,
+    conversationsMomPct: rollMomPct(rand),
     activeAgents,
     agentsCreated,
     credits,
-    momPct,
+    creditsCap,
+    creditsUsedMomPct: rollMomPct(rand),
     accountId: null,
   };
 }

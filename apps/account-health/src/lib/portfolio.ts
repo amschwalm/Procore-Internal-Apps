@@ -1,4 +1,4 @@
-import { activeUserCount } from "./lifecycle";
+import { activeUserCount, convertedCount } from "./lifecycle";
 import type { AccountRecord, ClassifiedUser } from "./types";
 
 export const PACK_IDS = ["enterprise", "pro", "starter", "none"] as const;
@@ -32,12 +32,18 @@ export type PortfolioCompany = {
   segment: SegmentId;
   pack: PackId;
   cse: string;
+  stickyUsers: number;
   activeUsers: number;
+  activeUsersMomPct: number | null;
   agentConversations: number;
+  conversationsMomPct: number | null;
   activeAgents: number;
   agentsCreated: number;
+  /** Credits used in the current period. */
   credits: number;
-  momPct: number | null;
+  /** Monthly credit allotment for the account. */
+  creditsCap: number;
+  creditsUsedMomPct: number | null;
   accountId: string | null;
 };
 
@@ -46,10 +52,14 @@ export type PortfolioSortKey =
   | "segment"
   | "pack"
   | "cse"
+  | "stickyUsers"
   | "activeUsers"
+  | "activeUsersMomPct"
   | "agentConversations"
+  | "conversationsMomPct"
   | "credits"
-  | "momPct"
+  | "creditsUsedMomPct"
+  | "creditUtilization"
   | "conversationsPerUser";
 
 export type PortfolioSort = {
@@ -69,6 +79,12 @@ export function conversationsPerUser(company: PortfolioCompany): number | null {
   return company.agentConversations / company.activeUsers;
 }
 
+/** Share of the monthly allotment already spent. Null when there is no cap. */
+export function creditUtilization(company: PortfolioCompany): number | null {
+  if (company.creditsCap <= 0) return null;
+  return company.credits / company.creditsCap;
+}
+
 export function uniqueAgentsUsed(users: ClassifiedUser[]): number {
   const ids = new Set<string>();
   for (const user of users) {
@@ -81,7 +97,7 @@ export function companyFromAccount(account: AccountRecord): PortfolioCompany {
   const snapshot = account.snapshot;
   const activeUsers = activeUserCount(snapshot.counts);
   const agentConversations = snapshot.conversationVolume?.current30 ?? 0;
-  const momPct = snapshot.conversationVolume?.deltaPct ?? null;
+  const conversationsMomPct = snapshot.conversationVolume?.deltaPct ?? null;
   const activeAgents = uniqueAgentsUsed(snapshot.users);
   return {
     id: account.id,
@@ -89,12 +105,16 @@ export function companyFromAccount(account: AccountRecord): PortfolioCompany {
     segment: "unknown",
     pack: "none",
     cse: UNASSIGNED_CSE,
+    stickyUsers: convertedCount(snapshot.counts),
     activeUsers,
+    activeUsersMomPct: null,
     agentConversations,
+    conversationsMomPct,
     activeAgents,
     agentsCreated: activeAgents,
     credits: 0,
-    momPct,
+    creditsCap: 0,
+    creditsUsedMomPct: null,
     accountId: account.id,
   };
 }
@@ -117,6 +137,9 @@ export function overlayLiveAccounts(
         pack: existing.pack,
         cse: existing.cse === UNASSIGNED_CSE ? live.cse : existing.cse,
         credits: live.credits > 0 ? live.credits : existing.credits,
+        creditsCap: live.creditsCap > 0 ? live.creditsCap : existing.creditsCap,
+        creditsUsedMomPct: live.creditsUsedMomPct ?? existing.creditsUsedMomPct,
+        activeUsersMomPct: live.activeUsersMomPct ?? existing.activeUsersMomPct,
         accountId: account.id,
       });
     } else {
@@ -259,17 +282,29 @@ export function sortCompanies(
       case "cse":
         delta = cseSortValue(a.cse).localeCompare(cseSortValue(b.cse));
         break;
+      case "stickyUsers":
+        delta = a.stickyUsers - b.stickyUsers;
+        break;
       case "activeUsers":
         delta = a.activeUsers - b.activeUsers;
+        break;
+      case "activeUsersMomPct":
+        delta = (a.activeUsersMomPct ?? -Infinity) - (b.activeUsersMomPct ?? -Infinity);
         break;
       case "agentConversations":
         delta = a.agentConversations - b.agentConversations;
         break;
+      case "conversationsMomPct":
+        delta = (a.conversationsMomPct ?? -Infinity) - (b.conversationsMomPct ?? -Infinity);
+        break;
       case "credits":
         delta = a.credits - b.credits;
         break;
-      case "momPct":
-        delta = (a.momPct ?? -Infinity) - (b.momPct ?? -Infinity);
+      case "creditsUsedMomPct":
+        delta = (a.creditsUsedMomPct ?? -Infinity) - (b.creditsUsedMomPct ?? -Infinity);
+        break;
+      case "creditUtilization":
+        delta = (creditUtilization(a) ?? -1) - (creditUtilization(b) ?? -1);
         break;
       case "conversationsPerUser":
         delta = (conversationsPerUser(a) ?? -1) - (conversationsPerUser(b) ?? -1);

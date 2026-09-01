@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatCredits, formatDecimal, formatInt, formatPct, momTone } from "@/lib/format";
+import { formatInt, formatPct, momTone } from "@/lib/format";
 import {
   PACK_IDS,
   PACK_LABELS,
   SEGMENT_IDS,
   SEGMENT_LABELS,
-  conversationsPerUser,
+  creditUtilization,
   filterCompanies,
   nextPortfolioSort,
   sortCompanies,
@@ -118,7 +118,7 @@ export function BookOfBusiness({
 
       <section className="overflow-hidden rounded-2xl border border-white/10 bg-pc-panel">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+          <table className="min-w-[72rem] w-full text-left text-sm">
             <thead className="text-[11px] uppercase tracking-[0.14em] text-white/45">
               <tr className="border-b border-white/10">
                 <SortHeader label="Company" column="name" sort={sort} onSort={setSort} />
@@ -126,7 +126,15 @@ export function BookOfBusiness({
                 <SortHeader label="Pack" column="pack" sort={sort} onSort={setSort} />
                 <SortHeader label="CSE" column="cse" sort={sort} onSort={setSort} />
                 <SortHeader
+                  label="Sticky users"
+                  column="stickyUsers"
+                  sort={sort}
+                  onSort={setSort}
+                  numeric
+                />
+                <SortHeader
                   label="Active users"
+                  hint="+ MoM"
                   column="activeUsers"
                   sort={sort}
                   onSort={setSort}
@@ -134,16 +142,16 @@ export function BookOfBusiness({
                 />
                 <SortHeader
                   label="Agent conversations"
+                  hint="+ MoM"
                   column="agentConversations"
                   sort={sort}
                   onSort={setSort}
                   numeric
                 />
-                <SortHeader label="Credits" column="credits" sort={sort} onSort={setSort} numeric />
-                <SortHeader label="MoM" column="momPct" sort={sort} onSort={setSort} numeric />
                 <SortHeader
-                  label="Conversations / user"
-                  column="conversationsPerUser"
+                  label="Credits spent"
+                  hint="used vs allotment · credits used MoM"
+                  column="credits"
                   sort={sort}
                   onSort={setSort}
                   numeric
@@ -153,13 +161,12 @@ export function BookOfBusiness({
             <tbody>
               {visible.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-white/45">
+                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-white/45">
                     No companies match these filters.
                   </td>
                 </tr>
               ) : (
                 visible.map((company) => {
-                  const perUser = conversationsPerUser(company);
                   const live = Boolean(company.accountId);
                   return (
                     <tr key={company.id} className="border-b border-white/10 last:border-0">
@@ -185,19 +192,24 @@ export function BookOfBusiness({
                       </td>
                       <td className="px-4 py-3 text-white/80">{company.cse}</td>
                       <td className="px-4 py-3 text-right font-mono text-white">
-                        {formatInt(company.activeUsers)}
+                        {formatInt(company.stickyUsers)}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-white">
-                        {formatInt(company.agentConversations)}
+                      <td className="px-4 py-3">
+                        <MetricWithMom
+                          value={company.activeUsers}
+                          mom={company.activeUsersMomPct}
+                          momLabel="users MoM"
+                        />
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-white/80">
-                        {formatCredits(company.credits)}
+                      <td className="px-4 py-3">
+                        <MetricWithMom
+                          value={company.agentConversations}
+                          mom={company.conversationsMomPct}
+                          momLabel="conversations MoM"
+                        />
                       </td>
-                      <td className={`px-4 py-3 text-right font-mono ${momTone(company.momPct)}`}>
-                        {formatPct(company.momPct, 0)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-white/80">
-                        {perUser === null ? "—" : formatDecimal(perUser, 1)}
+                      <td className="px-4 py-3">
+                        <CreditsSpentCell company={company} />
                       </td>
                     </tr>
                   );
@@ -207,6 +219,59 @@ export function BookOfBusiness({
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function MetricWithMom({
+  value,
+  mom,
+  momLabel,
+}: {
+  value: number;
+  mom: number | null;
+  momLabel: string;
+}) {
+  return (
+    <div className="text-right">
+      <div className="font-mono text-white">{formatInt(value)}</div>
+      <div className={`mt-0.5 font-mono text-[10px] ${momTone(mom)}`}>
+        {formatPct(mom, 1)} {momLabel}
+      </div>
+    </div>
+  );
+}
+
+function CreditsSpentCell({ company }: { company: PortfolioCompany }) {
+  const used = company.credits;
+  const cap = company.creditsCap;
+  const utilization = creditUtilization(company);
+  const pct = utilization === null ? 0 : Math.min(100, Math.max(0, utilization * 100));
+  const remaining = Math.max(0, cap - used);
+  return (
+    <div className="ml-auto min-w-[13.5rem] max-w-[16rem]">
+      <div className="flex items-baseline justify-end gap-1.5 font-mono text-white">
+        <span>{formatInt(used)}</span>
+        <span className="text-[10px] normal-case tracking-normal text-white/40">
+          of {formatInt(cap)}
+        </span>
+      </div>
+      <div
+        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10"
+        role="meter"
+        aria-label="Credits used versus allotment"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+      >
+        <div className="h-full rounded-full bg-pc-orange" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="text-[10px] text-white/40">{formatInt(remaining)} left</span>
+        <span className={`font-mono text-[10px] ${momTone(company.creditsUsedMomPct)}`}>
+          {formatPct(company.creditsUsedMomPct, 1)} credits used MoM
+        </span>
+      </div>
     </div>
   );
 }
@@ -245,12 +310,14 @@ function FilterSelect({
 
 function SortHeader({
   label,
+  hint,
   column,
   sort,
   onSort,
   numeric = false,
 }: {
   label: string;
+  hint?: string;
   column: PortfolioSortKey;
   sort: PortfolioSort;
   onSort: (next: PortfolioSort) => void;
@@ -262,12 +329,17 @@ function SortHeader({
       <button
         type="button"
         onClick={() => onSort(nextPortfolioSort(sort, column))}
-        className={`inline-flex items-center gap-1 hover:text-pc-orange ${
+        className={`inline-flex flex-col gap-0.5 hover:text-pc-orange ${
           active ? "text-pc-orange" : "text-white/45"
-        } ${numeric ? "flex-row-reverse" : ""}`}
+        } ${numeric ? "items-end" : "items-start"}`}
       >
-        {label}
-        <span className="font-mono text-[10px]">{active ? (sort.direction === "asc" ? "↑" : "↓") : ""}</span>
+        <span className={`inline-flex items-center gap-1 ${numeric ? "flex-row-reverse" : ""}`}>
+          {label}
+          <span className="font-mono text-[10px]">{active ? (sort.direction === "asc" ? "↑" : "↓") : ""}</span>
+        </span>
+        {hint ? (
+          <span className="text-[9px] font-normal normal-case tracking-normal text-white/35">{hint}</span>
+        ) : null}
       </button>
     </th>
   );
