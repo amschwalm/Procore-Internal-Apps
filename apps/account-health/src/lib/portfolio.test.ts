@@ -89,6 +89,8 @@ describe("summarizePortfolio", () => {
     expect(summary.packs[3]?.companies).toBe(0);
     expect(summary.asOf).toBe("2026-08-31T00:00:00.000Z");
     expect(summary.capUtilPct).not.toBeNull();
+    expect(summary.capUtilPct!).toBeGreaterThan(0);
+    expect(summary.capUtilPct!).toBeLessThanOrEqual(100);
   });
 });
 

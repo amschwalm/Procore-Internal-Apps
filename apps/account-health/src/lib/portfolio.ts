@@ -196,6 +196,7 @@ export function summarizePortfolio(
   const companiesWithActiveAgents = companies.filter((company) => company.activeAgents > 0).length;
   const agentConversations = companies.reduce((sum, company) => sum + company.agentConversations, 0);
   const credits = companies.reduce((sum, company) => sum + company.credits, 0);
+  const creditsCap = companies.reduce((sum, company) => sum + company.creditsCap, 0);
 
   const packs: PackColumn[] = PACK_IDS.map((pack) => {
     const rows = companies.filter((company) => company.pack === pack);
@@ -227,7 +228,7 @@ export function summarizePortfolio(
     agentConversations,
     credits,
     avgCredits: average(credits, companyCount),
-    capUtilPct: MONTHLY_CREDIT_CAP > 0 ? (credits / MONTHLY_CREDIT_CAP) * 100 : null,
+    capUtilPct: creditsCap > 0 ? (credits / creditsCap) * 100 : MONTHLY_CREDIT_CAP > 0 ? (credits / MONTHLY_CREDIT_CAP) * 100 : null,
     avgActiveAgents: average(activeAgents, companyCount),
     asOf,
     packs,
