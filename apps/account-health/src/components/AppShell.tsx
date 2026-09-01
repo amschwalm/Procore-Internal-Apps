@@ -45,7 +45,9 @@ export function AppShell({
                   <AccountSwitcher accounts={accounts} compact />
                 </div>
               ) : currentAccount ? (
-                <p className="mt-2 px-2 text-[11px] text-white/35">{currentAccount.name}</p>
+                <p className="mt-2 px-2 text-[11px] leading-snug text-white/35">
+                  Current account · {currentAccount.name}
+                </p>
               ) : null}
             </div>
 
